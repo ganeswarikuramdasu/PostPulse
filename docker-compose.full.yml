@@ -1,0 +1,53 @@
+# Full-stack deployment: MySQL + backend + frontend, all in one command.
+#
+#   docker compose -f docker-compose.full.yml up -d --build
+#
+# Before running: copy backend/.env.example to backend/.env and set real
+# values for SECRET_KEY and ADMIN_BOOTSTRAP_EMAIL. This file reads that same
+# .env for the backend service. The trained model bundle
+# (backend/models/content_performance_bundle.joblib) must already exist -
+# run `python ml/src/generate_dataset.py && python ml/src/train.py` first.
+services:
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: postpulse_root_pw
+      MYSQL_DATABASE: postpulse
+      MYSQL_USER: postpulse
+      MYSQL_PASSWORD: postpulse_pw
+    volumes:
+      - postpulse_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ppostpulse_root_pw"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: mysql+pymysql://postpulse:postpulse_pw@mysql:3306/postpulse
+      ALLOWED_ORIGINS: http://localhost:8080
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://localhost:8000/api
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+
+volumes:
+  postpulse_mysql_data:

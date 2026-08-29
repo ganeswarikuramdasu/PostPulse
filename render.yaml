@@ -1,0 +1,63 @@
+# Render Blueprint — PostPulse
+#
+# Provisions both the managed PostgreSQL database and the FastAPI backend.
+# The React frontend is deployed separately on Vercel (see frontend/README_DEPLOY.md).
+#
+# Usage:
+#   1. Push this repo to GitHub.
+#   2. In Render: New -> Blueprint, connect the repo. It will create the
+#      database and web service defined below.
+#   3. Fill in the env vars marked "REQUIRED" below (Blueprints prompt for
+#      env vars not given a value here).
+#   4. Set ALLOWED_ORIGINS to your deployed Vercel frontend URL.
+#
+# See README.md "Deployment (Render + Vercel)" for the full walkthrough.
+
+databases:
+  - name: postpulse-db
+    databaseName: postpulse
+    plan: free
+    # Render injects the internal connection string into the web service via
+    # the env var given in `fromDatabase` on each service below.
+
+services:
+  - type: web
+    name: postpulse-api
+    runtime: python
+    plan: free
+    # Build/start from the self-contained backend directory. It includes the
+    # model bundle (backend/models/*.joblib) and inference code (backend/app/ml).
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1
+    autoDeploy: true
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.3
+      - key: SECRET_KEY
+        sync: false
+        # REQUIRED - generate with: python -c "import secrets; print(secrets.token_hex(32))"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: postpulse-db
+          property: connectionString
+      - key: ADMIN_BOOTSTRAP_EMAIL
+        value: ""
+        # Your email BEFORE first deploying/registering to get admin access
+      - key: ALLOWED_ORIGINS
+        sync: false
+        # REQUIRED - your Vercel app URL, e.g. https://your-app.vercel.app
+      - key: FRONTEND_URL
+        sync: false
+        # Your Vercel app URL with /, e.g. https://your-app.vercel.app
+      - key: EMAIL_HOST
+        value: smtp.gmail.com
+      - key: EMAIL_PORT
+        value: "587"
+      - key: EMAIL_USER
+        value: ""
+        # Your Gmail address (optional, for real verification emails)
+      - key: EMAIL_APP_PASSWORD
+        value: ""
+        # Gmail App Password (optional, for real verification emails)
