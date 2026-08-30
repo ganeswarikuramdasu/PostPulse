@@ -40,15 +40,28 @@ _BUNDLE = None
 
 
 def _bundle_path() -> Path:
-    # Deployment-friendly bundle resolution. Candidates, in order:
-    #   1. MODEL_BUNDLE_PATH env var (explicit override, e.g. a volume-mounted file)
-    #   2. backend/models/content_performance_bundle.joblib (shipped with the API)
-    #   3. ml/models/content_performance_bundle.joblib (repo-root local dev layout)
+    # Deployment-friendly bundle resolution. The module lives in one of two
+    # repo locations: ml/src/ (canonical training tree) or backend/app/ml/
+    # (self-contained copy shipped with the API). From either one, walk up to
+    # the repo root and look in the standard bundle locations. Candidates:
+    #   1. MODEL_BUNDLE_PATH env var (explicit override)
+    #   2. <repo>/backend/models/... (shipped with the API)
+    #   3. <repo>/ml/models/...      (local training output)
+    here = Path(__file__).resolve().parent
+    repo_candidates = []
+    if here.name == "src" and here.parent.name == "ml":
+        repo_root = here.parent.parent          # ml/src -> repo root
+    elif here.name == "ml" and here.parent.name == "app":
+        repo_root = here.parent.parent.parent   # backend/app/ml -> repo root
+    else:
+        repo_root = here.parent.parent          # fallback
+    repo_candidates = [
+        repo_root / "backend" / "models" / "content_performance_bundle.joblib",
+        repo_root / "ml" / "models" / "content_performance_bundle.joblib",
+    ]
     candidates = [
         Path(os.getenv("MODEL_BUNDLE_PATH", "")).expanduser() if os.getenv("MODEL_BUNDLE_PATH") else None,
-        _THIS_DIR.parent.parent / "models" / "content_performance_bundle.joblib",
-        _THIS_DIR.parent.parent.parent.parent / "ml" / "models" / "content_performance_bundle.joblib",
-    ]
+    ] + repo_candidates
     for c in candidates:
         if c is not None and c.exists():
             return c

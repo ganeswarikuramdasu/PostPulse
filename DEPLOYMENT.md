@@ -74,6 +74,12 @@ Your backend URL will look like: `https://postpulse-api.onrender.com`
 > **Note:** Render free-tier web services **spin down** after ~15 min of
 > inactivity and take a few seconds to wake on the next request. This is fine
 > for a portfolio/demo. The database persists.
+>
+> **Heads-up on free PostgreSQL:** as of 2025 Render no longer provisions *new*
+> free-tier PostgreSQL databases on all accounts — you may be asked to choose a
+> paid Postgres tier (the smallest is cheap). If free isn't offered, pick the
+> lowest paid instance, or substitute any other hosted Postgres (Neon, Supabase)
+> by pasting its connection string into the backend's `DATABASE_URL` instead.
 
 ---
 

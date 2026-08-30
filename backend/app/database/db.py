@@ -1,16 +1,17 @@
 """
 db.py
 
-Uses SQLAlchemy so the same code works against MySQL (the default/intended
-production database for PostPulse) and SQLite (automatic local fallback when
-DATABASE_URL isn't set, so the project still runs with zero database setup).
+Uses SQLAlchemy so the same code works against PostgreSQL (production),
+MySQL (local dev), and SQLite (automatic local fallback when DATABASE_URL
+isn't set, so the project still runs with zero database setup).
 
-To use MySQL (recommended - see README "Running Locally" for full setup):
-    DATABASE_URL=mysql+pymysql://user:password@localhost:3306/postpulse
+Supported DATABASE_URL forms (auto-normalized where a driver isn't named):
+  - PostgreSQL (production, e.g. Render): postgres://... -> postgresql+psycopg2://...
+  - MySQL (local dev):                     mysql://...   -> mysql+pymysql://...
+  - SQLite (zero setup):                   sqlite:///./postpulse.db
 
-Requires `pip install pymysql` (included in backend/requirements.txt) and a
-running MySQL server with a `postpulse` database already created:
-    CREATE DATABASE postpulse CHARACTER SET utf8mb4;
+Requires the matching driver in backend/requirements.txt: `psycopg2-binary`
+(Postgres) and/or `pymysql` (MySQL). See README "Database Choice".
 """
 import os
 from sqlalchemy import (

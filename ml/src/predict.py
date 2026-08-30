@@ -23,6 +23,7 @@ This module has no FastAPI/Pydantic dependency so it can be unit tested or
 reused from a notebook/CLI directly.
 """
 from pathlib import Path
+import os
 import numpy as np
 import pandas as pd
 import joblib
@@ -39,16 +40,34 @@ _BUNDLE = None
 
 
 def _bundle_path() -> Path:
-    # Prefer the copy shipped with the backend; fall back to ml/models/
-    candidates = [
-        _THIS_DIR.parent.parent / "backend" / "models" / "content_performance_bundle.joblib",
-        _THIS_DIR.parent / "models" / "content_performance_bundle.joblib",
+    # Deployment-friendly bundle resolution. The module lives in one of two
+    # repo locations: ml/src/ (canonical training tree) or backend/app/ml/
+    # (self-contained copy shipped with the API). From either one, walk up to
+    # the repo root and look in the standard bundle locations. Candidates:
+    #   1. MODEL_BUNDLE_PATH env var (explicit override)
+    #   2. <repo>/backend/models/... (shipped with the API)
+    #   3. <repo>/ml/models/...      (local training output)
+    here = Path(__file__).resolve().parent
+    repo_candidates = []
+    if here.name == "src" and here.parent.name == "ml":
+        repo_root = here.parent.parent          # ml/src -> repo root
+    elif here.name == "ml" and here.parent.name == "app":
+        repo_root = here.parent.parent.parent   # backend/app/ml -> repo root
+    else:
+        repo_root = here.parent.parent          # fallback
+    repo_candidates = [
+        repo_root / "backend" / "models" / "content_performance_bundle.joblib",
+        repo_root / "ml" / "models" / "content_performance_bundle.joblib",
     ]
+    candidates = [
+        Path(os.getenv("MODEL_BUNDLE_PATH", "")).expanduser() if os.getenv("MODEL_BUNDLE_PATH") else None,
+    ] + repo_candidates
     for c in candidates:
-        if c.exists():
+        if c is not None and c.exists():
             return c
     raise FileNotFoundError(
-        "content_performance_bundle.joblib not found. Run `python ml/src/train.py` first."
+        "content_performance_bundle.joblib not found. Set MODEL_BUNDLE_PATH or run "
+        "`python ml/src/train.py` first."
     )
 
 
