@@ -45,11 +45,13 @@ services:
         sync: false
         # Your Vercel app URL with /, e.g. https://your-app.vercel.app
       - key: AUTO_VERIFY_USERS
-        value: "true"
-        # "true" activates accounts immediately (recommended on Render free tier since Render blocks outbound SMTP ports)
+        value: "false"
+      - key: BREVO_API_KEY
+        sync: false
+        # Recommended for Render free tier: free Brevo API key (https://brevo.com - 300 emails/day over HTTPS)
       - key: RESEND_API_KEY
         sync: false
-        # Optional: Resend HTTP API key (https://resend.com) - works on Render over HTTPS port 443
+        # Alternative: Resend API key (https://resend.com)
       - key: EMAIL_HOST
         value: smtp.gmail.com
       - key: EMAIL_PORT

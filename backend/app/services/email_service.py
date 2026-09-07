@@ -25,9 +25,10 @@ EMAIL_USER = _clean_env("EMAIL_USER") or None
 EMAIL_APP_PASSWORD = _clean_env("EMAIL_APP_PASSWORD") or None
 EMAIL_FROM_NAME = _clean_env("EMAIL_FROM_NAME", "PostPulse") or "PostPulse"
 FRONTEND_URL = _clean_env("FRONTEND_URL", "http://localhost:5173") or "http://localhost:5173"
+BREVO_API_KEY = _clean_env("BREVO_API_KEY") or None
 RESEND_API_KEY = _clean_env("RESEND_API_KEY") or None
 
-EMAIL_CONFIGURED = bool(RESEND_API_KEY or (EMAIL_HOST and EMAIL_USER and EMAIL_APP_PASSWORD))
+EMAIL_CONFIGURED = bool(BREVO_API_KEY or RESEND_API_KEY or (EMAIL_HOST and EMAIL_USER and EMAIL_APP_PASSWORD))
 
 
 def send_verification_email(to_email: str, token: str) -> None:
@@ -53,7 +54,36 @@ def send_verification_email(to_email: str, token: str) -> None:
     </div>
     """
 
-    # 1. If Resend API Key is set, send over HTTPS (bypasses cloud host SMTP port blocks)
+    # 1. If Brevo API Key is set, send over HTTPS (recommended for Render free tier - sends to any email)
+    if BREVO_API_KEY:
+        try:
+            import json
+            import urllib.request
+            sender_email = EMAIL_USER or "ganeswarikuramdasu@gmail.com"
+            payload = {
+                "sender": {"name": EMAIL_FROM_NAME, "email": sender_email},
+                "to": [{"email": to_email}],
+                "subject": "Verify your PostPulse account",
+                "htmlContent": html,
+            }
+            req = urllib.request.Request(
+                "https://api.brevo.com/v3/smtp/email",
+                data=json.dumps(payload).encode("utf-8"),
+                headers={
+                    "api-key": BREVO_API_KEY,
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                },
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=10) as response:
+                if response.status in (200, 201):
+                    print(f"[EMAIL] Verification email sent via Brevo API to {to_email}")
+                    return
+        except Exception as brevo_err:
+            print(f"[EMAIL WARNING] Brevo HTTP send failed: {brevo_err}")
+
+    # 2. If Resend API Key is set, send over HTTPS (bypasses cloud host SMTP port blocks)
     if RESEND_API_KEY:
         try:
             import json
