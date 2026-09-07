@@ -3,9 +3,11 @@
 An ML-powered web application that predicts how an Instagram post is likely to
 perform — before it's posted. Users register, verify their email, and log in
 to get a 0–100 performance score, expected reach, expected engagement rate,
-the factors driving the prediction, and grounded recommendations. Includes
-an admin module (user management, plan control) as a foundation for a future
-paid tier.
+the factors driving the prediction, and **model-grounded recommendations** —
+including an optimal posting schedule (best day & time across all 7×24
+combinations), an optimal caption length, and an optimal hashtag count, all
+found by re-running the model on candidate inputs. Includes an admin module
+(user management, plan control) as a foundation for a future paid tier.
 
 This is a portfolio project demonstrating a complete, honest full-stack ML
 pipeline: real data validation, model comparison, evaluation, explainability,
@@ -22,13 +24,14 @@ authentication, and production-style architecture (FastAPI + MySQL + React).
 5. [Feature Engineering](#feature-engineering)
 6. [Models & Evaluation](#models--evaluation)
 7. [Explainability](#explainability)
-8. [Authentication & Admin](#authentication--admin)
-9. [API Documentation](#api-documentation)
-10. [Running Locally](#running-locally)
-11. [Email Verification Setup](#email-verification-setup)
-12. [Testing](#testing)
-13. [Limitations](#limitations)
-14. [Future Improvements](#future-improvements)
+8. [Recommendation Engine](#recommendation-engine)
+9. [Authentication & Admin](#authentication--admin)
+10. [API Documentation](#api-documentation)
+11. [Running Locally](#running-locally)
+12. [Email Verification Setup](#email-verification-setup)
+13. [Testing](#testing)
+14. [Limitations](#limitations)
+15. [Future Improvements](#future-improvements)
 
 ---
 
@@ -193,6 +196,36 @@ approximation of local feature contribution (global importance + row-specific
 description) — not true SHAP/Shapley values — and is disclosed as such in
 the code.
 
+## Recommendation Engine
+
+Beyond the headline predictions, every response includes a **model-driven
+recommendation engine** (`ml/src/predict.py`) that suggests concrete, specific
+changes — not generic advice. Instead of hard-coded "best practices", it
+re-runs the trained views model on candidate modifications of the user's exact
+input and reports only the changes the model actually predicts will raise
+reach, ranked by real impact.
+
+Three dedicated analyses are computed per prediction:
+
+| Analysis | What it does |
+|---|---|
+| **Posting schedule** | Sweeps all **7 days × 24 hours = 168 combinations** through the views model to find the single best day, best hour, and best combined day+time slot — plus ranked day/hour views so you can see exactly which days and times perform best for your post. |
+| **Caption strategy** | Tests **10 candidate caption lengths** (40–300 chars) to find the length the model predicts reaches most for this specific post, with a natural-language recommendation (lengthen / tighten / already optimal). |
+| **Hashtag strategy** | Tests **11 candidate hashtag counts** (2–20) to find the count that maximizes predicted reach, avoiding both under- and over-tagging extremes. |
+
+A `quick_tips` list then ranks the biggest wins (format → reel, add a
+call-to-action, adopt the optimal caption/hashtag/schedule) by predicted
+view gain, so users see at a glance which single edit moves the needle most.
+If the model predicts no content tweak helps, the app says so honestly and
+recommends focusing on the heavily-weighted engagement rate instead — never
+fabricating advice the model doesn't back (see "data_quality" / signal
+detection).
+
+The structured analysis (best day, best slot, optimal length/count, ranked
+alternatives) is returned in the prediction payload (`posting_schedule`,
+`caption_strategy`, `hashtag_strategy`) and rendered as dedicated cards on
+the results page.
+
 ## Authentication & Admin
 
 - **Registration** requires email + password (min. 8 characters); accounts
@@ -225,7 +258,7 @@ Base URL: `http://localhost:8000/api` · Interactive docs: `http://localhost:800
 | POST | `/auth/login` | none | Returns JWT + user |
 | GET | `/auth/me` | JWT | Current user |
 | POST | `/auth/resend-verification` | none (email+password) | Resend verification email |
-| POST | `/predict` | JWT, verified | Single prediction |
+| POST | `/predict` | JWT, verified | Single prediction (includes score, reach, engagement, factors, and recommendation engine results) |
 | POST | `/predict/batch` | JWT, verified | Batch predictions |
 | GET | `/model-info` | none | Model metadata, test metrics, feature importance |
 | GET | `/prediction-history` | JWT, verified | Current user's past predictions |
