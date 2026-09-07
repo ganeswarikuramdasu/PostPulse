@@ -1,9 +1,9 @@
-# PostPulse — Production Deployment (Render + Vercel + PostgreSQL)
+# PostPulse — Production Deployment (Render + Vercel + Supabase)
 
 This guide walks you through deploying PostPulse to production:
 
 - **Backend (FastAPI API)** → [Render](https://render.com) web service
-- **Database** → [Render](https://render.com) managed **PostgreSQL** (free tier)
+- **Database** → [Supabase](https://supabase.com) managed **PostgreSQL**
 - **Frontend (React)** → [Vercel](https://vercel.com) static hosting
 
 Everything is pre-configured for you. You just connect your GitHub repo and
@@ -14,9 +14,10 @@ fill in a few secrets.
 ## 0. Prerequisites
 
 1. A **GitHub account** (free).
-2. A **Render account** (free tier is fine).
-3. A **Vercel account** (connected to GitHub).
-4. (Optional, for real verification emails) a Gmail address with **2-Step
+2. A **Supabase account** (free tier PostgreSQL).
+3. A **Render account** (free tier is fine).
+4. A **Vercel account** (connected to GitHub).
+5. (Optional, for real verification emails) a Gmail address with **2-Step
    Verification** enabled and a generated **App Password** —
    see [Email Verification](#5-email-verification-optional-but-recommended).
 
@@ -24,14 +25,12 @@ fill in a few secrets.
 
 ## 1. Push the code to GitHub
 
-The repo is already initialized with git (no remote). From the project root:
+The repo is already initialized with git. From the project root:
 
 ```bash
 git add -A
-git commit -m "Prepare PostPulse for deployment (Render + Vercel + Postgres)"
-git remote add origin git@github.com:<your-username>/postpulse.git
-git branch -M main
-git push -u origin main
+git commit -m "Configure Supabase database and update deployment"
+git push
 ```
 
 > Push the **entire** repo. The backend (`backend/`) is self-contained (it
@@ -40,17 +39,20 @@ git push -u origin main
 
 ---
 
-## 2. Create the database + backend on Render (via Blueprint)
+## 2. Configure Backend on Render (via Blueprint or Manual Service)
 
-Render's **Blueprint** feature provisions the PostgreSQL database **and** the
-backend web service together from the included `render.yaml`.
+Render provisions the backend web service from the included `render.yaml`.
 
-1. In Render's dashboard, click **New → Blueprint**.
-2. Connect your GitHub repo (the one you just pushed).
+1. In Render's dashboard, click **New → Blueprint** (or go to your existing `postpulse-api` web service).
+2. Connect your GitHub repo (the one you pushed).
 3. Render reads `render.yaml` and shows:
-   - `postpulse-db` — managed PostgreSQL (free)
    - `postpulse-api` — the FastAPI web service (free)
 4. Render will prompt you for the env vars marked `sync: false`. Fill them in:
+   - **`DATABASE_URL`** (REQUIRED) — your Supabase connection string:
+     ```
+     postgresql+psycopg2://postgres.<project-ref>:<password>@aws-0-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require
+     ```
+     *(If your password has special characters like `?` or `/`, ensure they are URL-encoded, e.g. `%3F` for `?` and `%2F` for `/`).*
    - **`SECRET_KEY`** (REQUIRED) — generate one:
      ```bash
      python -c "import secrets; print(secrets.token_hex(32))"
@@ -63,23 +65,16 @@ backend web service together from the included `render.yaml`.
    - **`FRONTEND_URL`** — your Vercel URL, e.g. `https://postpulse.vercel.app`
      (used to build email verification links).
    - **`EMAIL_USER`** / **`EMAIL_APP_PASSWORD`** — optional, for real emails.
-   - `DATABASE_URL` is wired automatically from the provisioned database — do
-     not override it.
-5. Click **Apply**. Render builds and deploys the backend, and creates the
-   database and its tables on first startup.
+5. Click **Apply** (or **Save Changes** in Environment if updating an already-deployed service).
+   Render builds and deploys the backend, and automatically creates all required tables
+   (`users`, `email_verification_tokens`, `prediction_history`) on first startup.
 
 Your backend URL will look like: `https://postpulse-api.onrender.com`
 (confirm it in the Render dashboard's service details).
 
 > **Note:** Render free-tier web services **spin down** after ~15 min of
-> inactivity and take a few seconds to wake on the next request. This is fine
-> for a portfolio/demo. The database persists.
->
-> **Heads-up on free PostgreSQL:** as of 2025 Render no longer provisions *new*
-> free-tier PostgreSQL databases on all accounts — you may be asked to choose a
-> paid Postgres tier (the smallest is cheap). If free isn't offered, pick the
-> lowest paid instance, or substitute any other hosted Postgres (Neon, Supabase)
-> by pasting its connection string into the backend's `DATABASE_URL` instead.
+> inactivity and take a few seconds to wake on the next request. The Supabase
+> database persists continuously.
 
 ---
 
@@ -176,7 +171,7 @@ Never use your real Google password; always an App Password.
 
 | Variable | Required | Notes |
 |---|---|---|
-| `DATABASE_URL` | auto | Injected from the provisioned `postpulse-db`. |
+| `DATABASE_URL` | Yes | Supabase PostgreSQL connection string (with ?sslmode=require). |
 | `SECRET_KEY` | Yes | Random 64-char hex. Never reuse the dev default. |
 | `ALLOWED_ORIGINS` | Yes | Comma-separated frontend origin(s). |
 | `ADMIN_BOOTSTRAP_EMAIL` | Optional | Email promoted to admin on first registration. |

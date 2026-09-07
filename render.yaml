@@ -1,24 +1,17 @@
 # Render Blueprint — PostPulse
 #
-# Provisions both the managed PostgreSQL database and the FastAPI backend.
+# Provisions the FastAPI backend connected to your Supabase PostgreSQL database.
 # The React frontend is deployed separately on Vercel (see frontend/README_DEPLOY.md).
 #
 # Usage:
 #   1. Push this repo to GitHub.
 #   2. In Render: New -> Blueprint, connect the repo. It will create the
-#      database and web service defined below.
-#   3. Fill in the env vars marked "REQUIRED" below (Blueprints prompt for
-#      env vars not given a value here).
+#      web service defined below.
+#   3. Fill in the env vars marked "REQUIRED" below (including DATABASE_URL
+#      with your Supabase connection string).
 #   4. Set ALLOWED_ORIGINS to your deployed Vercel frontend URL.
 #
-# See README.md "Deployment (Render + Vercel)" for the full walkthrough.
-
-databases:
-  - name: postpulse-db
-    databaseName: postpulse
-    plan: free
-    # Render injects the internal connection string into the web service via
-    # the env var given in `fromDatabase` on each service below.
+# See DEPLOYMENT.md for the full walkthrough.
 
 services:
   - type: web
@@ -39,9 +32,9 @@ services:
         sync: false
         # REQUIRED - generate with: python -c "import secrets; print(secrets.token_hex(32))"
       - key: DATABASE_URL
-        fromDatabase:
-          name: postpulse-db
-          property: connectionString
+        sync: false
+        # REQUIRED - Supabase connection string:
+        # postgresql+psycopg2://postgres.zfbjixorlzsbnnsruxpb:_5bQkbNC%3F$9v%2FTC@aws-0-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require
       - key: ADMIN_BOOTSTRAP_EMAIL
         value: ""
         # Your email BEFORE first deploying/registering to get admin access

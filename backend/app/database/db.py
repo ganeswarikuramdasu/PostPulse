@@ -1,17 +1,17 @@
 """
 db.py
 
-Uses SQLAlchemy so the same code works against PostgreSQL (production),
+Uses SQLAlchemy so the same code works against Supabase / PostgreSQL (production),
 MySQL (local dev), and SQLite (automatic local fallback when DATABASE_URL
 isn't set, so the project still runs with zero database setup).
 
 Supported DATABASE_URL forms (auto-normalized where a driver isn't named):
-  - PostgreSQL (production, e.g. Render): postgres://... -> postgresql+psycopg2://...
-  - MySQL (local dev):                     mysql://...   -> mysql+pymysql://...
-  - SQLite (zero setup):                   sqlite:///./postpulse.db
+  - Supabase / PostgreSQL: postgresql+psycopg2://... or postgres://... or postgresql://...
+  - MySQL (local dev):     mysql://...   -> mysql+pymysql://...
+  - SQLite (zero setup):   sqlite:///./postpulse.db
 
 Requires the matching driver in backend/requirements.txt: `psycopg2-binary`
-(Postgres) and/or `pymysql` (MySQL). See README "Database Choice".
+(Postgres/Supabase) and/or `pymysql` (MySQL). See README "Database Choice".
 """
 import os
 from sqlalchemy import (
@@ -25,13 +25,15 @@ DATABASE_URL = os.getenv("DATABASE_URL", "").strip() or "sqlite:///./postpulse.d
 # Cloud database providers hand out connection strings in a few common
 # shapes; SQLAlchemy needs the driver named explicitly. Normalize automatically
 # so pasting a provider's URL straight into DATABASE_URL just works:
-#   mysql://...      -> mysql+pymysql://...
-#   postgres://...   -> postgresql+psycopg2://...
-# (postgresql://...  is already valid; Render exposes postgres://...)
+#   mysql://...        -> mysql+pymysql://...
+#   postgres://...     -> postgresql+psycopg2://...
+#   postgresql://...   -> postgresql+psycopg2://...
 if DATABASE_URL.startswith("mysql://"):
     DATABASE_URL = DATABASE_URL.replace("mysql://", "mysql+pymysql://", 1)
 elif DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+psycopg2://", 1)
+elif DATABASE_URL.startswith("postgresql://"):
+    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://", 1)
 
 connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
 
