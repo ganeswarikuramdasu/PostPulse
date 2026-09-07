@@ -52,11 +52,8 @@ services:
       - key: RESEND_API_KEY
         sync: false
         # Alternative: Resend API key (https://resend.com)
-      - key: EMAIL_HOST
-        value: smtp.gmail.com
-      - key: EMAIL_PORT
-        value: "587"
       - key: EMAIL_USER
         value: ""
-      - key: EMAIL_APP_PASSWORD
-        value: ""
+        # Your sender address (verified in Brevo) - used as the Brevo "from"
+      - key: EMAIL_FROM_NAME
+        value: "PostPulse"

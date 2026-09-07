@@ -17,9 +17,8 @@ fill in a few secrets.
 2. A **Supabase account** (free tier PostgreSQL).
 3. A **Render account** (free tier is fine).
 4. A **Vercel account** (connected to GitHub).
-5. (Optional, for real verification emails) a Gmail address with **2-Step
-   Verification** enabled and a generated **App Password** —
-   see [Email Verification](#5-email-verification-optional-but-recommended).
+5. (Optional, for real verification emails) a **Brevo account** with a free
+   API key — see [Email verification](#5-email-verification-optional-but-recommended).
 
 ---
 
@@ -64,7 +63,9 @@ Render provisions the backend web service from the included `render.yaml`.
      account on first registration. Set it **before** you register that address.
    - **`FRONTEND_URL`** — your Vercel URL, e.g. `https://postpulse.vercel.app`
      (used to build email verification links).
-   - **`EMAIL_USER`** / **`EMAIL_APP_PASSWORD`** — optional, for real emails.
+   - **`BREVO_API_KEY`** — optional, but recommended for real emails (free
+     300/day over HTTPS). Registering without it still works — verification
+     links print to the Render logs instead.
 5. Click **Apply** (or **Save Changes** in Environment if updating an already-deployed service).
    Render builds and deploys the backend, and automatically creates all required tables
    (`users`, `email_verification_tokens`, `prediction_history`) on first startup.
@@ -115,23 +116,25 @@ API.
 
 ## 5. Email verification (optional but recommended)
 
-Without SMTP configured, verification links are **printed to the Render log**
-instead of emailed — the app still works, but real users won't get emails.
+Without an email service configured, verification links are **printed to the
+Render log** instead of emailed — the app still works, but real users won't
+get emails.
 
-To enable real emails:
+To enable real emails with **Brevo** (free — 300 emails/day over HTTPS, no
+SMTP ports needed, works on Render's free tier):
 
-1. Enable 2-Step Verification on your Google account.
-2. Generate an **App Password**:
-   [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
+1. Create a free account at [brevo.com](https://brevo.com).
+2. Go to **Settings → SMTP & API → API Keys** and generate an API key.
 3. In Render, set the backend env vars:
-   - `EMAIL_HOST=smtp.gmail.com`
-   - `EMAIL_PORT=587`
-   - `EMAIL_USER=<youraddress@gmail.com>`
-   - `EMAIL_APP_PASSWORD=<16-char app password>`
+   - `BREVO_API_KEY=<your_brevo_api_key>`
+   - `EMAIL_USER=<your_sender_address>` (a sender verified in Brevo)
+   - `EMAIL_FROM_NAME=PostPulse`
    - `FRONTEND_URL=https://postpulse.vercel.app`
 4. Save — Render redeploys.
 
-Never use your real Google password; always an App Password.
+Fallbacks (optional): a **Resend** API key (`RESEND_API_KEY`), or classic
+**SMTP** (`EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER`, `EMAIL_APP_PASSWORD` — for
+Gmail, always an App Password, never your real Google password).
 
 ---
 
@@ -176,8 +179,10 @@ Never use your real Google password; always an App Password.
 | `ALLOWED_ORIGINS` | Yes | Comma-separated frontend origin(s). |
 | `ADMIN_BOOTSTRAP_EMAIL` | Optional | Email promoted to admin on first registration. |
 | `FRONTEND_URL` | Yes (if emailing) | Base URL for verification links. |
-| `EMAIL_HOST` / `EMAIL_PORT` | Optional | SMTP server (default smtp.gmail.com:587). |
-| `EMAIL_USER` / `EMAIL_APP_PASSWORD` | Optional | Gmail App Password. |
+| `BREVO_API_KEY` | Recommended | Brevo API key (free 300 emails/day over HTTPS). Preferred on Render. |
+| `EMAIL_USER` / `EMAIL_FROM_NAME` | With Brevo | Sender address/name verified in Brevo. |
+| `RESEND_API_KEY` | Optional | Alternative API-based sender (resend.com). |
+| `EMAIL_HOST` / `EMAIL_PORT` / `EMAIL_USER` / `EMAIL_APP_PASSWORD` | Optional | Legacy SMTP fallback (e.g. Gmail App Password). |
 | `MODEL_BUNDLE_PATH` | Optional | Override for the joblib bundle path. |
 
 ### Frontend (Vercel)

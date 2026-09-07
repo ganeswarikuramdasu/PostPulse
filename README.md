@@ -40,21 +40,22 @@ production architecture (FastAPI + PostgreSQL/Supabase + React).
 ## Table of Contents
 
 1. [Architecture](#architecture)
-2. [Tech Stack](#tech-stack)
-3. [Dataset & Model](#dataset--model)
-4. [The Kaggle Dataset Case Study](#the-kaggle-dataset-case-study)
-5. [Feature Engineering](#feature-engineering)
-6. [Models & Evaluation](#models--evaluation)
-7. [Explainability](#explainability)
-8. [Recommendation Engine](#recommendation-engine)
-9. [Authentication & Admin](#authentication--admin)
-10. [API Reference](#api-reference)
-11. [Running Locally](#running-locally)
-12. [Email Verification](#email-verification)
-13. [Production Deployment](#production-deployment)
-14. [Testing](#testing)
-15. [Limitations](#limitations)
-16. [Roadmap](#roadmap)
+2. [Project Structure](#project-structure)
+3. [Tech Stack](#tech-stack)
+4. [Dataset & Model](#dataset--model)
+5. [The Kaggle Dataset Case Study](#the-kaggle-dataset-case-study)
+6. [Feature Engineering](#feature-engineering)
+7. [Models & Evaluation](#models--evaluation)
+8. [Explainability](#explainability)
+9. [Recommendation Engine](#recommendation-engine)
+10. [Authentication & Admin](#authentication--admin)
+11. [API Reference](#api-reference)
+12. [Running Locally](#running-locally)
+13. [Email Verification](#email-verification)
+14. [Production Deployment](#production-deployment)
+15. [Testing](#testing)
+16. [Limitations](#limitations)
+17. [Roadmap](#roadmap)
 
 ---
 
@@ -76,13 +77,63 @@ flowchart TD
 The model is **trained offline** (`ml/src/train.py`) and served from a Joblib
 bundle loaded once at API startup — never retrained on a request.
 
+## Project Structure
+
+Three top-level folders, one job each:
+
+| Folder | Contents | Purpose |
+|---|---|---|
+| [`ml/`](#ml) | Python training pipeline (`ml/src/`), datasets (`ml/data/`), model output (`ml/models/`) | Build & validate the ML models |
+| [`backend/`](#backend) | FastAPI app (`backend/app/`) + the shipped model bundle (`backend/models/`) | Serve predictions via REST |
+| [`frontend/`](#frontend) | React + TypeScript app (`frontend/src/`) | The user-facing web UI |
+
+### `ml/` — the training pipeline
+
+| Path | What it is |
+|---|---|
+| `ml/src/generate_dataset.py` | Generates the synthetic training dataset |
+| `ml/src/feature_engineering.py` | Feature transforms — imported by both `train.py` and `predict.py` to keep train/serve in sync |
+| `ml/src/preprocessing.py` | Sklearn preprocessing helpers |
+| `ml/src/train.py` | Trains the models, evaluates them, writes the Joblib bundle to `ml/models/` **and** `backend/models/` |
+| `ml/src/eda.py` | Exploratory analysis — outputs charts/notes to `ml/reports/` |
+| `ml/src/predict.py` | Runs a sample prediction end-to-end against a trained bundle |
+| `ml/src/load_instagram_dataset.py` | Adapter for the real Kaggle dataset (see the case study) |
+| `ml/data/` | Training data (synthetic + the Kaggle case-study file) |
+| `ml/models/` | Local training output (the deployed bundle is the tracked copy in `backend/models/`) |
+| `ml/reports/` | Regenerated EDA charts & eval output (gitignored) |
+
+### `backend/` — the API server
+
+| Path | What it is |
+|---|---|
+| `backend/app/main.py` | FastAPI app entry point — routers, CORS, startup table creation |
+| `backend/app/api/` | Route handlers: `routes.py` (predict/history), `auth_routes.py`, `admin_routes.py` |
+| `backend/app/services/` | Business logic: prediction, auth, email (Brevo) |
+| `backend/app/schemas/` | Pydantic request/response models (`prediction.py`, `auth.py`) |
+| `backend/app/database/db.py` | SQLAlchemy engine + table models |
+| `backend/app/ml/` | Mirrored inference code (`predict.py`, `feature_engineering.py`) — kept in sync with `ml/src/` via `sync_ml.py` |
+| `backend/models/` | The shipped model bundle loaded at startup |
+| `backend/requirements.txt` | Python dependencies |
+
+### `frontend/` — the web app
+
+| Path | What it is |
+|---|---|
+| `frontend/src/pages/` | Route pages: Landing, Register, Login, VerifyEmail, Predict, Results, History, Admin |
+| `frontend/src/components/` | Reusable UI: Navbar, ScoreGauge, FactorBars, MetricCard, States, ProtectedRoute, ErrorBoundary, Footer |
+| `frontend/src/services/api.ts` | Axios client for the backend API |
+| `frontend/src/context/AuthContext.tsx` | Auth state + JWT handling |
+| `frontend/src/types/` | TypeScript interfaces for predictions & recommendations |
+| `frontend/src/utils/validation.ts` | Client-side form validation |
+| `frontend/vercel.json` | SPA routing config for Vercel |
+
 ## Tech Stack
 
 | Layer | Technology |
 |---|---|
 | Frontend | React 18, TypeScript, Vite, Tailwind CSS, Recharts, Axios, React Router |
 | Backend | FastAPI, Pydantic, Uvicorn, SQLAlchemy |
-| Auth | bcrypt password hashing, JWT (PyJWT), SMTP/API email verification |
+| Auth | bcrypt password hashing, JWT (PyJWT), email verification (Brevo API) |
 | ML | Python, NumPy, Pandas, Scikit-learn, Matplotlib, Seaborn, Joblib |
 | Database | **PostgreSQL via Supabase** (prod + local); SQLite auto-fallback for zero-setup local dev |
 | Deploy | Render (API) · Vercel (web) · Supabase (DB) |
@@ -248,8 +299,9 @@ results page.
 
 - **Registration** requires email + password (min. 8 chars); accounts start unverified.
 - **Email verification is required before predictions** (unverified `/predict`
-  returns 403). Without SMTP configured, verification links print to the
-  backend console — fully usable with zero email setup.
+  returns 403). Sent via **Brevo** by default (free 300 emails/day); without
+  any email service configured, verification links print to the backend
+  console — fully usable with zero email setup.
 - **Login** issues a JWT (7-day expiry) used as a Bearer token on protected routes.
 - **Admin bootstrap:** set `ADMIN_BOOTSTRAP_EMAIL` in `backend/.env` before
   first registering that address — that account auto-promotes to admin. No
@@ -329,22 +381,25 @@ App at `http://localhost:5173`. Register an account with the email you set as
 
 ## Email Verification
 
-Verification links are emailed by default. **Never put your real Google
-password in `.env`** — for Gmail, generate a dedicated **App Password**:
+Verification emails are delivered through **Brevo** by default. Brevo's free
+tier covers **300 emails/day over HTTPS** — no SMTP ports needed, which makes
+it work on Render's free tier out of the box.
 
-1. Enable **2-Step Verification** on the Google account (required for App Passwords)
-2. Go to [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
-3. Generate a 16-character app password
-4. Set in `backend/.env`:
+1. Create a free account at [brevo.com](https://brevo.com)
+2. Go to **Settings → SMTP & API → API Keys** and generate an API key
+3. Set it in `backend/.env`:
    ```
-   EMAIL_HOST=smtp.gmail.com
-   EMAIL_PORT=587
-   EMAIL_USER=youraddress@gmail.com
-   EMAIL_APP_PASSWORD=the16charapppassword
+   BREVO_API_KEY=your_brevo_api_key
+   EMAIL_USER=youraddress@gmail.com   # sender address (verified in Brevo)
+   EMAIL_FROM_NAME=PostPulse
    ```
 
-Leave these blank and verification links print to the backend console instead —
-no email setup required to run and test locally.
+Fallbacks (all optional): a **Resend** API key (`RESEND_API_KEY`), or classic
+**SMTP** (`EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER`, `EMAIL_APP_PASSWORD` — for
+Gmail, use an App Password, never your real password).
+
+Leave all of these blank and verification links print to the backend console
+instead — no email setup required to run and test locally.
 
 ## Production Deployment
 
@@ -371,7 +426,7 @@ See `DEPLOYMENT.md` for the full table. The key ones:
 | `SECRET_KEY` | Yes | `python -c "import secrets; print(secrets.token_hex(32))"` — never reuse the dev default |
 | `ALLOWED_ORIGINS` | Yes | Your deployed frontend's exact URL(s), comma-separated |
 | `ADMIN_BOOTSTRAP_EMAIL` | Recommended | Set before first registering that address |
-| `EMAIL_HOST`/`EMAIL_USER`/`EMAIL_APP_PASSWORD` | Recommended | Without these, links only print to server logs — fine for testing |
+| `BREVO_API_KEY` | Recommended | Enables real emails (free 300/day over HTTPS). Without it, links print to server logs — fine for testing |
 | `FRONTEND_URL` | Yes (if emailing) | Base URL used to build verification links |
 | `VITE_API_URL` (frontend build-time) | Yes | Your deployed backend's `/api` URL |
 

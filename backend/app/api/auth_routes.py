@@ -63,7 +63,7 @@ def register(payload: UserRegister, background_tasks: BackgroundTasks, db: Sessi
     db.commit()
 
     # Email is sent in the background AFTER the response returns, so the
-    # register request completes immediately regardless of how long the SMTP
+    # register request completes immediately regardless of how long the email
     # send takes. This prevents the "registration failed" timeout that
     # happened before (the frontend's 15s axios timeout would fire while the
     # account was actually being created, then a retry would hit

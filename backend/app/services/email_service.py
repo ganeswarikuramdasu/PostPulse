@@ -1,11 +1,15 @@
 """
 email_service.py
 
-Sends verification emails via SMTP (e.g. Gmail with an App Password - never
-a real account password, see README "Email Verification Setup").
+Sends verification emails. Preferred path:
+  1. Brevo API key over HTTPS (recommended for Render free tier - free 300
+     emails/day, works even though Render blocks outbound SMTP ports)
+  2. Resend API key over HTTPS (alternative)
+  3. SMTP as a fallback (e.g. Gmail with an App Password - never a real
+     account password, see README "Email Verification")
 
-DEV MODE: if EMAIL_HOST/EMAIL_USER/EMAIL_APP_PASSWORD are not set in the
-environment, this does NOT fail - it prints the verification link to the
+DEV MODE: if no email service is configured (no BREVO_API_KEY / RESEND_API_KEY
+/ SMTP creds), this does NOT fail - it prints the verification link to the
 backend console instead, so registration/verification works out of the box
 for local development and testing without requiring any email setup at all.
 This is intentional: the app should be fully runnable without a mail server.
@@ -59,6 +63,8 @@ def send_verification_email(to_email: str, token: str) -> None:
         try:
             import json
             import urllib.request
+            # Brevo requires a verified sender address. Use EMAIL_USER if set,
+            # otherwise fall back to the repo owner's address.
             sender_email = EMAIL_USER or "ganeswarikuramdasu@gmail.com"
             payload = {
                 "sender": {"name": EMAIL_FROM_NAME, "email": sender_email},
@@ -110,7 +116,7 @@ def send_verification_email(to_email: str, token: str) -> None:
         except Exception as resend_err:
             print(f"[EMAIL WARNING] Resend HTTP send failed: {resend_err}")
 
-    # 2. Try standard SMTP (e.g. Gmail App Password)
+    # 3. Try standard SMTP (e.g. Gmail App Password)
     if EMAIL_HOST and EMAIL_USER and EMAIL_APP_PASSWORD:
         try:
             msg = MIMEMultipart("alternative")
