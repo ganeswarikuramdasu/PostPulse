@@ -69,6 +69,10 @@ export default function Predict() {
     const histEng = Number(form.historical_engagement_rate)
     const hour = Number(form.posting_hour)
 
+    if (!form.content_type) e.content_type = 'Select a content format'
+    if (!form.creator_category) e.creator_category = 'Select a creator / niche category'
+    if (!form.account_type) e.account_type = 'Select an account type'
+    if (!form.day_of_week) e.day_of_week = 'Select a day of week'
     if (form.description_length === '' || Number.isNaN(descLen) || descLen < 0 || descLen > 5000) e.description_length = 'Enter caption length (0–5000)'
     if (form.hashtags === '' || Number.isNaN(tags) || tags < 0 || tags > 50) e.hashtags = 'Enter hashtag count (0–50)'
     if (form.followers === '' || Number.isNaN(followers) || followers < 0) e.followers = 'Enter follower count'
@@ -132,13 +136,15 @@ export default function Predict() {
             Content
           </legend>
           <div className="grid gap-5 sm:grid-cols-2">
-            <Field label="Content format">
+            <Field label="Content format" hint={errors.content_type}>
               <select className={inputClass} value={form.content_type} onChange={(e) => update('content_type', e.target.value)}>
+                <option value="" disabled>Select content format</option>
                 {CONTENT_TYPES.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </Field>
-            <Field label="Creator / niche category">
+            <Field label="Creator / niche category" hint={errors.creator_category}>
               <select className={inputClass} value={form.creator_category} onChange={(e) => update('creator_category', e.target.value)}>
+                <option value="" disabled>Select creator / niche</option>
                 {CREATOR_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </Field>
@@ -165,8 +171,9 @@ export default function Predict() {
             Account
           </legend>
           <div className="grid gap-5 sm:grid-cols-2">
-            <Field label="Account type">
+            <Field label="Account type" hint={errors.account_type}>
               <select className={inputClass} value={form.account_type} onChange={(e) => update('account_type', e.target.value)}>
+                <option value="" disabled>Select account type</option>
                 {ACCOUNT_TYPES.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </Field>
@@ -198,8 +205,9 @@ export default function Predict() {
               <input type="number" min={0} max={23} className={inputClass} value={form.posting_hour}
                 onChange={(e) => update('posting_hour', Number(e.target.value))} />
             </Field>
-            <Field label="Day of week">
+            <Field label="Day of week" hint={errors.day_of_week}>
               <select className={inputClass} value={form.day_of_week} onChange={(e) => update('day_of_week', e.target.value)}>
+                <option value="" disabled>Select day of week</option>
                 {DAYS.map((d) => <option key={d} value={d}>{d}</option>)}
               </select>
             </Field>
