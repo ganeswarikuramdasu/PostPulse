@@ -1,8 +1,0 @@
-{
-  "max_abs_feature_target_correlation": 0.956,
-  "views_model_beats_baseline": true,
-  "engagement_model_beats_baseline": true,
-  "category_roc_auc": 0.9191,
-  "signal_detected": true,
-  "notice": null
-}

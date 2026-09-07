@@ -26,3 +26,8 @@ backend/prediction_history.db
 # TS build metadata
 frontend/tsconfig.tsbuildinfo
 
+# ML artifacts (regenerable via ml/src/train.py and ml/src/eda.py;
+# the served model bundle is the tracked copy in backend/models/)
+ml/models/
+ml/reports/
+
