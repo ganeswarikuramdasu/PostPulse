@@ -1,6 +1,7 @@
 import { Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
+import ErrorBoundary from './components/ErrorBoundary'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import Landing from './pages/Landing'
@@ -18,16 +19,18 @@ export default function App() {
       <div className="flex min-h-screen flex-col">
         <Navbar />
         <main className="flex-1">
-          <Routes>
-            <Route path="/" element={<Landing />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/verify-email" element={<VerifyEmail />} />
-            <Route path="/predict" element={<ProtectedRoute><Predict /></ProtectedRoute>} />
-            <Route path="/results" element={<ProtectedRoute><Results /></ProtectedRoute>} />
-            <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
-            <Route path="/admin" element={<ProtectedRoute adminOnly><Admin /></ProtectedRoute>} />
-          </Routes>
+          <ErrorBoundary>
+            <Routes>
+              <Route path="/" element={<Landing />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/verify-email" element={<VerifyEmail />} />
+              <Route path="/predict" element={<ProtectedRoute><Predict /></ProtectedRoute>} />
+              <Route path="/results" element={<ProtectedRoute><Results /></ProtectedRoute>} />
+              <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
+              <Route path="/admin" element={<ProtectedRoute adminOnly><Admin /></ProtectedRoute>} />
+            </Routes>
+          </ErrorBoundary>
         </main>
         <Footer />
       </div>

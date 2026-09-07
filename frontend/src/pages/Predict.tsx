@@ -2,6 +2,7 @@ import { FormEvent, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ACCOUNT_TYPES, CREATOR_CATEGORIES, CONTENT_TYPES, DAYS, type ContentInput } from '../types'
 import { predictContent } from '../services/api'
+import { extractApiError } from '../utils/validation'
 import { AlertCircle } from 'lucide-react'
 
 const initialForm: ContentInput = {
@@ -53,6 +54,9 @@ export default function Predict() {
     if (form.description_length < 0 || form.description_length > 5000) e.description_length = 'Must be between 0 and 5000'
     if (form.hashtags < 0 || form.hashtags > 50) e.hashtags = 'Must be between 0 and 50'
     if (form.followers < 0) e.followers = 'Cannot be negative'
+    if (form.followers > 500_000_000) e.followers = 'Must be 500M or less'
+    if (form.account_age_months < 0 || form.account_age_months > 300) e.account_age_months = 'Must be between 0 and 300 months'
+    if (form.historical_avg_views < 0) e.historical_avg_views = 'Cannot be negative'
     if (form.historical_engagement_rate < 0 || form.historical_engagement_rate > 100) e.historical_engagement_rate = 'Must be a percentage 0–100'
     if (form.posting_hour < 0 || form.posting_hour > 23) e.posting_hour = 'Must be 0–23'
     setErrors(e)
@@ -69,7 +73,7 @@ export default function Predict() {
       navigate('/results', { state: { result, input: form } })
     } catch (err: any) {
       setApiError(
-        err?.response?.data?.detail || 'Could not reach the prediction API. Make sure the backend is running and VITE_API_URL is set correctly.'
+        extractApiError(err) || 'Could not reach the prediction API. Make sure the backend is running and VITE_API_URL is set correctly.'
       )
     } finally {
       setSubmitting(false)
@@ -138,11 +142,11 @@ export default function Predict() {
               <input type="number" className={inputClass} value={form.followers}
                 onChange={(e) => update('followers', Number(e.target.value))} />
             </Field>
-            <Field label="Account age (months)">
+            <Field label="Account age (months)" hint={errors.account_age_months}>
               <input type="number" step="0.1" className={inputClass} value={form.account_age_months}
                 onChange={(e) => update('account_age_months', Number(e.target.value))} />
             </Field>
-            <Field label="Historical average reach">
+            <Field label="Historical average reach" hint={errors.historical_avg_views}>
               <input type="number" className={inputClass} value={form.historical_avg_views}
                 onChange={(e) => update('historical_avg_views', Number(e.target.value))} />
             </Field>
