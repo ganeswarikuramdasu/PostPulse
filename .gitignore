@@ -21,8 +21,6 @@ backend/prediction_history.db
 # OS
 .DS_Store
 
-# Docker volumes (managed by docker-compose, not committed)
-
 # TS build metadata
 frontend/tsconfig.tsbuildinfo
 
