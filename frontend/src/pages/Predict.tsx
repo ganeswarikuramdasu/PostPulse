@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { ACCOUNT_TYPES, CREATOR_CATEGORIES, CONTENT_TYPES, DAYS, type ContentInput } from '../types'
 import { predictContent } from '../services/api'
 import { AlertCircle } from 'lucide-react'
-import DataQualityBanner from '../components/DataQualityBanner'
 
 const initialForm: ContentInput = {
   content_type: 'reel',
@@ -70,7 +69,7 @@ export default function Predict() {
       navigate('/results', { state: { result, input: form } })
     } catch (err: any) {
       setApiError(
-        err?.response?.data?.detail || 'Could not reach the prediction API. Is the FastAPI backend running on :8000?'
+        err?.response?.data?.detail || 'Could not reach the prediction API. Make sure the backend is running and VITE_API_URL is set correctly.'
       )
     } finally {
       setSubmitting(false)
@@ -83,10 +82,6 @@ export default function Predict() {
       <p className="mt-2 text-text-secondary">
         Fill in your Instagram post and account details.
       </p>
-
-      <div className="mt-6">
-        <DataQualityBanner notice="This model is trained on a Kaggle Instagram analytics dataset that, on inspection, shows no measurable relationship between any of these inputs and actual post performance (verified via correlation analysis - see README). Predictions below will sit close to the dataset average regardless of what you enter. This is disclosed here on purpose rather than hidden." />
-      </div>
 
       {apiError && (
         <div className="mt-6 flex items-start gap-3 rounded-lg border border-score-low/30 bg-score-low/5 p-4 text-sm text-score-low">
@@ -178,7 +173,7 @@ export default function Predict() {
         <button
           type="submit"
           disabled={submitting}
-          className="focus-ring w-full rounded-lg bg-accent py-3.5 font-display font-semibold text-bg shadow-glow transition-transform hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60"
+          className="focus-ring w-full rounded-lg bg-vibrant-cta py-3.5 font-display font-semibold text-white shadow-glow-pink transition-transform hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {submitting ? 'Running prediction…' : 'Predict Performance'}
         </button>

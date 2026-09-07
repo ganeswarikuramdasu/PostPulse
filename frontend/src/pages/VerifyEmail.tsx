@@ -1,20 +1,25 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { verifyEmail } from '../services/api'
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react'
+import { extractApiError } from '../utils/validation'
 
 export default function VerifyEmail() {
   const [params] = useSearchParams()
   const token = params.get('token')
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [message, setMessage] = useState('')
+  const fired = useRef(false)
 
   useEffect(() => {
+    if (fired.current) return
     if (!token) {
       setStatus('error')
       setMessage('No verification token found in the link.')
+      fired.current = true
       return
     }
+    fired.current = true
     verifyEmail(token)
       .then((data) => {
         setStatus('success')
@@ -22,7 +27,7 @@ export default function VerifyEmail() {
       })
       .catch((err) => {
         setStatus('error')
-        setMessage(err?.response?.data?.detail || 'Verification failed.')
+        setMessage(extractApiError(err) || 'Verification failed. Please try the login page or check your email for a fresh link.')
       })
   }, [token])
 
@@ -41,7 +46,7 @@ export default function VerifyEmail() {
           </div>
           <h1 className="mt-4 font-display text-xl font-semibold text-text-primary">Email verified</h1>
           <p className="mt-2 text-sm text-text-secondary">{message}</p>
-          <Link to="/login" className="focus-ring mt-6 rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-bg">
+          <Link to="/login" className="focus-ring mt-6 rounded-lg bg-vibrant-cta px-5 py-2.5 text-sm font-semibold text-white shadow-glow-pink">
             Log in
           </Link>
         </>

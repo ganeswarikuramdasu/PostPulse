@@ -1,7 +1,7 @@
 import os
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
@@ -23,7 +23,7 @@ ADMIN_BOOTSTRAP_EMAIL = os.getenv("ADMIN_BOOTSTRAP_EMAIL", "").lower().strip()
 
 
 @router.post("/register", response_model=MessageResponse)
-def register(payload: UserRegister, db: Session = Depends(get_db)):
+def register(payload: UserRegister, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     existing = db.query(User).filter(User.email == payload.email.lower()).first()
     if existing:
         raise HTTPException(status_code=400, detail="An account with this email already exists.")
@@ -57,9 +57,15 @@ def register(payload: UserRegister, db: Session = Depends(get_db)):
     db.add(verification)
     db.commit()
 
-    send_verification_email(user.email, token)
+    # Email is sent in the background AFTER the response returns, so the
+    # register request completes immediately regardless of how long the SMTP
+    # send takes. This prevents the "registration failed" timeout that
+    # happened before (the frontend's 15s axios timeout would fire while the
+    # account was actually being created, then a retry would hit
+    # "already exists").
+    background_tasks.add_task(send_verification_email, user.email, token)
 
-    return {"message": "Account created. Check your email (or the backend console in dev mode) for a verification link."}
+    return {"message": "Account created. Check your email for a verification link."}
 
 
 @router.get("/verify-email", response_model=MessageResponse)
@@ -67,7 +73,15 @@ def verify_email(token: str, db: Session = Depends(get_db)):
     record = db.query(EmailVerificationToken).filter(EmailVerificationToken.token == token).first()
     if not record:
         raise HTTPException(status_code=400, detail="Invalid or unknown verification token.")
+
+    user = db.query(User).filter(User.id == record.user_id).first()
+
     if record.used:
+        # Already consumed. If the account ended up verified, treat a repeated
+        # (e.g. double-clicked) link as a harmless success instead of a confusing
+        # failure - the user clearly got the email and the link worked.
+        if user and user.is_verified:
+            return {"message": "Your email is already verified. You can log in now."}
         raise HTTPException(status_code=400, detail="This verification link has already been used.")
 
     expires_at = record.expires_at
@@ -76,7 +90,6 @@ def verify_email(token: str, db: Session = Depends(get_db)):
     if expires_at < datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="This verification link has expired. Please register again.")
 
-    user = db.query(User).filter(User.id == record.user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")
 
@@ -93,6 +106,12 @@ def login(payload: UserLogin, db: Session = Depends(get_db)):
     if not user or not verify_password(payload.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Incorrect email or password.")
 
+    if not user.is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Please verify your email address before logging in. Check your inbox (and spam folder) for the verification link.",
+        )
+
     token = create_access_token(user.id)
     return {"access_token": token, "user": UserOut.model_validate(user)}
 
@@ -103,7 +122,7 @@ def me(user: User = Depends(get_current_user)):
 
 
 @router.post("/resend-verification", response_model=MessageResponse)
-def resend_verification(payload: UserLogin, db: Session = Depends(get_db)):
+def resend_verification(payload: UserLogin, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     # Reuses UserLogin's email field only; still requires the correct password
     # so this can't be used to spam arbitrary email addresses.
     user = db.query(User).filter(User.email == payload.email.lower()).first()
@@ -118,5 +137,5 @@ def resend_verification(payload: UserLogin, db: Session = Depends(get_db)):
     )
     db.add(verification)
     db.commit()
-    send_verification_email(user.email, token)
+    background_tasks.add_task(send_verification_email, user.email, token)
     return {"message": "Verification email resent."}

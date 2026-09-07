@@ -90,9 +90,11 @@ views_candidates = {
     "Linear Regression": LinearRegression(),
     "Ridge": Ridge(alpha=1.0, random_state=RANDOM_STATE),
     "Lasso": Lasso(alpha=0.01, random_state=RANDOM_STATE),
-    "Random Forest": RandomForestRegressor(n_estimators=200, max_depth=14, random_state=RANDOM_STATE, n_jobs=-1),
-    "Gradient Boosting": GradientBoostingRegressor(random_state=RANDOM_STATE),
-    "HistGradientBoosting": HistGradientBoostingRegressor(random_state=RANDOM_STATE),
+    "Random Forest": RandomForestRegressor(n_estimators=300, max_depth=16, random_state=RANDOM_STATE, n_jobs=-1),
+    "Gradient Boosting": GradientBoostingRegressor(
+        learning_rate=0.1, n_estimators=250, max_depth=6, random_state=RANDOM_STATE
+    ),
+    "HistGradientBoosting": HistGradientBoostingRegressor(learning_rate=0.05, max_iter=600, random_state=RANDOM_STATE),
 }
 views_fitted = {}
 for name, model in views_candidates.items():
@@ -101,9 +103,9 @@ for name, model in views_candidates.items():
     views_fitted[name] = fitted
     print(f"  {name:22s} MAE={row['MAE']:.1f}  RMSE={row['RMSE']:.1f}  R2={row['R2']:.3f}")
 
-# light hyperparameter tuning on the best-looking candidate (HistGBR / RF)
+# light hyperparameter tuning on HistGradientBoosting (fast + strong)
 print("  Tuning HistGradientBoosting...")
-param_grid = {"max_depth": [None, 8, 14], "learning_rate": [0.05, 0.1], "max_iter": [150, 250]}
+param_grid = {"max_depth": [None, 12], "learning_rate": [0.03, 0.05], "max_iter": [400, 800]}
 gscv = GridSearchCV(HistGradientBoostingRegressor(random_state=RANDOM_STATE), param_grid, cv=3,
                      scoring="neg_mean_absolute_error", n_jobs=-1)
 gscv.fit(Xt_train, np.log1p(yv_train))
@@ -145,9 +147,11 @@ print(f"  -> Best for views: {best_views_model_name} (Linear/Ridge/Lasso exclude
 # evaluate once on the held-out test set.
 VIEWS_MODEL_FACTORY = {
     "Baseline (mean)": lambda: DummyRegressor(strategy="mean"),
-    "Random Forest": lambda: RandomForestRegressor(n_estimators=200, max_depth=14, random_state=RANDOM_STATE, n_jobs=-1),
-    "Gradient Boosting": lambda: GradientBoostingRegressor(random_state=RANDOM_STATE),
-    "HistGradientBoosting": lambda: HistGradientBoostingRegressor(random_state=RANDOM_STATE),
+    "Random Forest": lambda: RandomForestRegressor(n_estimators=300, max_depth=16, random_state=RANDOM_STATE, n_jobs=-1),
+    "Gradient Boosting": lambda: GradientBoostingRegressor(
+        learning_rate=0.1, n_estimators=250, max_depth=6, random_state=RANDOM_STATE
+    ),
+    "HistGradientBoosting": lambda: HistGradientBoostingRegressor(learning_rate=0.05, max_iter=600, random_state=RANDOM_STATE),
     "HistGradientBoosting (tuned)": lambda: HistGradientBoostingRegressor(random_state=RANDOM_STATE, **best_params_views),
 }
 if best_views_model_name == "Baseline (mean)":
@@ -170,9 +174,11 @@ engagement_candidates = {
     "Baseline (mean)": DummyRegressor(strategy="mean"),
     "Linear Regression": LinearRegression(),
     "Ridge": Ridge(alpha=1.0, random_state=RANDOM_STATE),
-    "Random Forest": RandomForestRegressor(n_estimators=200, max_depth=10, random_state=RANDOM_STATE, n_jobs=-1),
-    "Gradient Boosting": GradientBoostingRegressor(random_state=RANDOM_STATE),
-    "HistGradientBoosting": HistGradientBoostingRegressor(random_state=RANDOM_STATE),
+    "Random Forest": RandomForestRegressor(n_estimators=300, max_depth=10, random_state=RANDOM_STATE, n_jobs=-1),
+    "Gradient Boosting": GradientBoostingRegressor(
+        learning_rate=0.05, n_estimators=300, max_depth=5, random_state=RANDOM_STATE
+    ),
+    "HistGradientBoosting": HistGradientBoostingRegressor(learning_rate=0.05, max_iter=600, random_state=RANDOM_STATE),
 }
 for name, model in engagement_candidates.items():
     row, fitted = eval_regression(name, model, Xt_train, ye_train, Xt_val, ye_val, log_target=False)
@@ -188,9 +194,11 @@ ENGAGEMENT_MODEL_FACTORY = {
     "Baseline (mean)": lambda: DummyRegressor(strategy="mean"),
     "Linear Regression": lambda: LinearRegression(),
     "Ridge": lambda: Ridge(alpha=1.0, random_state=RANDOM_STATE),
-    "Random Forest": lambda: RandomForestRegressor(n_estimators=200, max_depth=10, random_state=RANDOM_STATE, n_jobs=-1),
-    "Gradient Boosting": lambda: GradientBoostingRegressor(random_state=RANDOM_STATE),
-    "HistGradientBoosting": lambda: HistGradientBoostingRegressor(random_state=RANDOM_STATE),
+    "Random Forest": lambda: RandomForestRegressor(n_estimators=300, max_depth=10, random_state=RANDOM_STATE, n_jobs=-1),
+    "Gradient Boosting": lambda: GradientBoostingRegressor(
+        learning_rate=0.05, n_estimators=300, max_depth=5, random_state=RANDOM_STATE
+    ),
+    "HistGradientBoosting": lambda: HistGradientBoostingRegressor(learning_rate=0.05, max_iter=600, random_state=RANDOM_STATE),
 }
 if best_engagement_name == "Baseline (mean)":
     print("  WARNING: no model beat the baseline mean predictor - see ml/reports/ for full comparison. "
@@ -215,8 +223,10 @@ class_candidates = {
     "Baseline (prior)": DummyClassifier(strategy="prior"),
     "Logistic Regression": LogisticRegression(max_iter=1000, random_state=RANDOM_STATE),
     "Decision Tree": DecisionTreeClassifier(max_depth=8, random_state=RANDOM_STATE),
-    "Random Forest": RandomForestClassifier(n_estimators=200, max_depth=12, random_state=RANDOM_STATE, n_jobs=-1),
-    "Gradient Boosting": GradientBoostingClassifier(random_state=RANDOM_STATE),
+    "Random Forest": RandomForestClassifier(n_estimators=400, max_depth=14, random_state=RANDOM_STATE, n_jobs=-1),
+    "Gradient Boosting": GradientBoostingClassifier(
+        learning_rate=0.05, n_estimators=300, max_depth=4, random_state=RANDOM_STATE
+    ),
 }
 labels_order = ["Low", "Medium", "High"]
 labels_sorted = sorted(labels_order)  # roc_auc_score requires `labels` given in sorted order
@@ -256,8 +266,10 @@ CATEGORY_MODEL_FACTORY = {
     "Baseline (prior)": lambda: DummyClassifier(strategy="prior"),
     "Logistic Regression": lambda: LogisticRegression(max_iter=1000, random_state=RANDOM_STATE),
     "Decision Tree": lambda: DecisionTreeClassifier(max_depth=8, random_state=RANDOM_STATE),
-    "Random Forest": lambda: RandomForestClassifier(n_estimators=300, max_depth=12, random_state=RANDOM_STATE, n_jobs=-1),
-    "Gradient Boosting": lambda: GradientBoostingClassifier(random_state=RANDOM_STATE),
+    "Random Forest": lambda: RandomForestClassifier(n_estimators=400, max_depth=14, random_state=RANDOM_STATE, n_jobs=-1),
+    "Gradient Boosting": lambda: GradientBoostingClassifier(
+        learning_rate=0.05, n_estimators=300, max_depth=4, random_state=RANDOM_STATE
+    ),
 }
 final_category_model = CATEGORY_MODEL_FACTORY[best_category_name]()
 final_category_model.fit(Xt_trainval, pd.concat([yc_train, yc_val]))

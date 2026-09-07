@@ -6,34 +6,60 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Vibrant animated night-club backdrop: violet -> hot pink -> orange */
 body {
+  background-color: #170b2e;
   background-image:
-    radial-gradient(circle at 15% 0%, rgba(255, 107, 74, 0.07), transparent 40%),
-    radial-gradient(circle at 85% 20%, rgba(45, 212, 191, 0.06), transparent 45%);
+    radial-gradient(circle at 10% 0%, rgba(168, 85, 247, 0.25), transparent 45%),
+    radial-gradient(circle at 90% 15%, rgba(244, 63, 158, 0.20), transparent 45%),
+    radial-gradient(circle at 50% 100%, rgba(255, 138, 76, 0.16), transparent 50%);
   background-attachment: fixed;
 }
 
 ::selection {
-  background: rgba(255, 107, 74, 0.3);
+  background: rgba(244, 63, 158, 0.4);
+  color: #fff;
 }
 
 ::-webkit-scrollbar {
   width: 10px;
 }
 ::-webkit-scrollbar-track {
-  background: #0A0E1A;
+  background: #170b2e;
 }
 ::-webkit-scrollbar-thumb {
-  background: #232C40;
+  background: linear-gradient(180deg, #f43f9e, #a855f7, #ff8a4c);
   border-radius: 999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #2f3a54;
+  background: linear-gradient(180deg, #ff4db0, #c084fc, #ffb175);
 }
 
 .focus-ring:focus-visible {
-  outline: 2px solid #FF6B4A;
+  outline: 2px solid #f43f9e;
   outline-offset: 2px;
+  border-radius: 6px;
+}
+
+@layer utilities {
+  .text-vibrant {
+    background-image: linear-gradient(120deg, #ffb175 0%, #f43f9e 45%, #c084fc 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .bg-vibrant-cta {
+    background-image: linear-gradient(135deg, #ff8a4c 0%, #f43f9e 55%, #a855f7 100%);
+  }
+  .bg-vibrant-hero {
+    background-image: linear-gradient(120deg, #ff8a4c, #f43f9e 45%, #a855f7);
+  }
+  .border-gradient {
+    border: 1px solid transparent;
+    background:
+      linear-gradient(#221240, #221240) padding-box,
+      linear-gradient(135deg, #ff8a4c, #f43f9e, #a855f7) border-box;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

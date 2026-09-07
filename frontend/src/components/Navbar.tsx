@@ -7,11 +7,14 @@ export default function Navbar() {
   const navigate = useNavigate()
   const { user, logout } = useAuth()
 
-  const links = [
-    { to: '/', label: 'Home' },
-    { to: '/predict', label: 'Predict' },
-    { to: '/history', label: 'History' },
-  ]
+  // When logged in there's no need for a Home tab — the app is fully
+  // navigated from the dashboard-style links below.
+  const links = user
+    ? [
+        { to: '/predict', label: 'Predict' },
+        { to: '/history', label: 'History' },
+      ]
+    : [{ to: '/', label: 'Home' }]
 
   const handleLogout = () => {
     logout()
@@ -22,10 +25,12 @@ export default function Navbar() {
     <header className="sticky top-0 z-50 border-b border-border bg-bg/80 backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
         <Link to="/" className="flex items-center gap-2 focus-ring rounded-md">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/10 text-accent">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-vibrant-cta text-white shadow-glow-pink">
             <Radar size={18} strokeWidth={2.5} />
           </div>
-          <span className="font-display text-lg font-semibold tracking-tight">PostPulse</span>
+          <span className="font-display text-lg font-semibold tracking-tight">
+            <span className="text-vibrant">PostPulse</span>
+          </span>
         </Link>
         <nav className="flex items-center gap-1">
           {links.map((link) => {
@@ -73,7 +78,7 @@ export default function Navbar() {
               </Link>
               <Link
                 to="/register"
-                className="focus-ring rounded-md bg-accent px-4 py-2 text-sm font-semibold text-bg transition-transform hover:scale-[1.03]"
+                className="focus-ring rounded-md bg-vibrant-cta px-4 py-2 text-sm font-semibold text-white shadow-glow-pink transition-transform hover:scale-[1.03]"
               >
                 Sign up
               </Link>

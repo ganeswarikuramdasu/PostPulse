@@ -11,13 +11,13 @@ function that:
   6. computes per-prediction "important factors" (local explanation)
   7. generates recommendations
 
-IMPORTANT: this bundle was trained on a dataset where no feature showed a
-measurable relationship with any target (see bundle["data_quality"] and the
-README "Dataset"/"Limitations" sections). The final models are therefore
-baseline (mean / class-prior) predictors, not learned ones. This module
-still runs the full pipeline honestly - it surfaces bundle["data_quality"]
-in every response and adjusts the "important factors" and recommendations
-sections accordingly, rather than inventing false confidence.
+IMPORTANT: the bundled models were trained on the synthetic signal-bearing
+dataset (see ml/src/generate_dataset.py) and surface bundle["data_quality"]
+(signal_detected) in every response so the app stays honest about how much
+signal the underlying data actually contains. When a meaningful signal exists,
+this module generates rich, input-specific recommendations for growing views;
+if no signal is detected, the "important factors" and recommendations sections
+are adjusted accordingly rather than inventing false confidence.
 
 This module has no FastAPI/Pydantic dependency so it can be unit tested or
 reused from a notebook/CLI directly.
@@ -182,7 +182,31 @@ def _local_important_factors(bundle, raw_row: dict, engineered_row: pd.DataFrame
     return factors
 
 
-def _recommendations(bundle, raw: dict, eng: pd.DataFrame, performance_score: float) -> list:
+def _infer_views(bundle, payload: dict) -> float:
+    """Run the views model on a payload dict and return the predicted views.
+
+    Extracted so the what-if suggestion engine can re-run the model on small
+    single-variable mutations of the user's input and report the real predicted
+    change in views - i.e. truly model-driven suggestions rather than hand-
+    written rules.
+    """
+    preprocessor = bundle["preprocessor"]
+    eng = add_engineered_features(pd.DataFrame([payload]))
+    Xt = preprocessor.transform(eng[ALL_FEATURES])
+    log_views = bundle["views_model"].predict(Xt)[0]
+    return max(float(np.expm1(log_views)), 0.0)
+
+
+def _fmt_views(n: float) -> str:
+    """Compact thousands formatting for suggestion deltas, e.g. 12453 -> '12.5k'."""
+    if n >= 1000:
+        return f"{n / 1000:.1f}k"
+    return f"{int(round(n))}"
+
+
+def _recommendations(bundle, raw: dict, eng: pd.DataFrame, performance_score: float,
+                     expected_views: float = None, expected_engagement_rate: float = None,
+                     important_factors: list = None) -> list:
     data_quality = bundle.get("data_quality", {})
     if not data_quality.get("signal_detected", True):
         # Honest mode: the training data showed no relationship between any
@@ -199,32 +223,115 @@ def _recommendations(bundle, raw: dict, eng: pd.DataFrame, performance_score: fl
             "to learn from, not a hidden feature.",
         ]
 
-    # Grounded in the actual encoded relationships this model was trained on
-    # (see ml/src/generate_dataset.py) - not arbitrary advice.
-    recs = []
-    if raw.get("historical_engagement_rate", 0) < 3:
-        recs.append("Historical engagement rate is on the low side - it's one of the strongest "
-                     "predictors in this model, so building engagement before scaling up posting "
-                     "volume will likely move your score more than any single-post change.")
-    hour = raw.get("posting_hour", 12)
-    if not (17 <= hour <= 21):
-        recs.append("Posting between 6-9 PM shows a measurable lift in this model's training data - "
-                     f"you selected {hour}:00.")
-    hashtags = raw.get("hashtags", 0)
-    if hashtags > 10:
-        recs.append(f"You're using {hashtags} hashtags - beyond ~8-10, additional hashtags show "
-                     "diminishing or slightly negative returns in this model. Consider trimming.")
-    if not raw.get("has_call_to_action"):
-        recs.append("Adding a call-to-action (e.g. \"comment below\", \"save this\") is associated "
-                     "with higher engagement in this model.")
-    desc_len = raw.get("description_length", 0)
-    if desc_len < 60 or desc_len > 220:
-        recs.append("Caption length outside roughly 90-160 characters tends to underperform the "
-                     f"sweet spot in this model - yours is {desc_len} characters.")
-    if not recs:
-        recs.append("This content profile looks solid across the factors this model weighs most - "
-                     "no major red flags identified.")
-    return recs[:5]
+    # ------------------------------------------------------------------
+    # MODEL-DRIVEN what-if recommendations.
+    # Each lever re-runs the *views model* on a single-variable mutation of
+    # the user's input, so every suggestion is backed by the model's own
+    # predicted change in views, sorted by real impact. No hand-written
+    # "best practice" that the model doesn't actually reward is reported.
+    # ------------------------------------------------------------------
+    base_views = _infer_views(bundle, raw)
+    levers: list = []
+
+    def record(label: str, modified: dict, summary: str):
+        if modified == raw:
+            return
+        delta = _infer_views(bundle, modified) - base_views
+        if delta <= 0:
+            return  # only surface changes the model says actually help
+        levers.append({
+            "delta": delta,
+            "text": f"{summary} Model estimate: ~{_fmt_views(delta)} more views.",
+        })
+
+    content_type = str(raw.get("content_type", ""))
+    hashtags = int(raw.get("hashtags", 0))
+    cta = bool(raw.get("has_call_to_action"))
+    desc_len = int(raw.get("description_length", 0))
+    hour = int(raw.get("posting_hour", 12))
+
+    # 1. Content format: reel is the discovery-optimised baseline for this model.
+    if content_type != "reel":
+        trial = dict(raw); trial["content_type"] = "reel"
+        record("Format -> reel", trial,
+               f"Post this as a reel instead of {content_type} - reels are the format this model associates "
+               f"with the widest non-follower reach.")
+
+    # 2. Hashtag count: nudge toward the model's sweet spot (~8).
+    target_hashtags = 8 if hashtags < 8 else (6 if hashtags > 10 else hashtags)
+    if target_hashtags != hashtags:
+        trial = dict(raw); trial["hashtags"] = target_hashtags
+        record("Hashtags", trial,
+               f"{'Raise' if target_hashtags > hashtags else 'Trim'} hashtags from {hashtags} to {target_hashtags} "
+               f"- this model links that range to better discoverability.")
+
+    # 3. Call-to-action.
+    if not cta:
+        trial = dict(raw); trial["has_call_to_action"] = 1
+        record("Add a CTA", trial,
+               'Add an explicit call-to-action ("Comment below", "Save this", "Share") - the model associates '
+               'a CTA with higher reach-driving engagement.')
+
+    # 4. Caption length: nudge toward ~140 chars.
+    target_len = desc_len
+    if desc_len > 0 and desc_len < 90:
+        target_len = 140
+    elif desc_len > 200:
+        target_len = 140
+    if target_len != desc_len:
+        trial = dict(raw); trial["description_length"] = target_len
+        record("Caption length", trial,
+               f"{'Lengthen' if target_len > desc_len else 'Tighten'} the caption from {desc_len} to ~{target_len} "
+               f"characters - the length this model favors for holding attention.")
+
+    # 5. Posting hour: toward the model's active evening window.
+    if not (18 <= hour <= 21):
+        target_hour = 19
+        if target_hour != hour:
+            trial = dict(raw); trial["posting_hour"] = target_hour
+            record("Posting time", trial,
+                   f"Post at {target_hour}:00 instead of {hour}:00 - this model's data shows the evening window "
+                   f"drives more initial reach.")
+
+    if not levers:
+        # Nothing the user can tweak moved predicted views up - say so honestly
+        # rather than inventing numbered advice the model doesn't back.
+        engagement = round(float(expected_engagement_rate or raw.get("historical_engagement_rate", 0) or 0), 2)
+        if engagement < 3:
+            return [
+                f"Your post looks well set up - the model predicts about {_fmt_views(base_views)} views with it "
+                f"as-is, and none of the usual tweaks (format, caption, hashtags, posting time) would raise that "
+                "prediction. Most content reaches its audience through one thing: a healthy engagement rate.",
+                f"Right now that rate ({engagement}%) is on the low side, and it's the single biggest factor the "
+                "model weighs. Focus on small, steady wins over time - a clear niche, replying to every comment, "
+                "and ending posts with a question - because every bit of engagement predicts more reach.",
+            ]
+        return [
+            f"Your post is already well set up - the model predicts about {_fmt_views(base_views)} views with it "
+            "as-is, and changing the format, caption, hashtags, or posting time wouldn't improve that prediction.",
+            "There's no single edit left to squeeze out more views here. If you want to push higher, focus on "
+            "growing your audience's engagement (regular replies and questions in posts) - it's what the model "
+            "weighs most heavily.",
+        ]
+
+    levers.sort(key=lambda l: -l["delta"])
+
+    recs = [f"Predicted views now: ~{_fmt_views(base_views)}. Biggest wins for this post, ranked by the model:"]
+    for lev in levers[:5]:
+        recs.append(lev["text"])
+
+    # Add one concise context note grounded in the engagement score if it's a
+    # real weak spot, since no content tweak can instantly fix historical data.
+    engagement = round(float(expected_engagement_rate or raw.get("historical_engagement_rate", 0) or 0), 2)
+    if engagement < 3:
+        recs.append(f"Your historical engagement rate ({engagement}%) is low - the model weights it heavily, so "
+                    "raising it over time (reply to every comment, end posts with a question) will compound the "
+                    "content tweaks above.")
+    elif engagement >= 7:
+        recs.append(f"Strong engagement base ({engagement}%) - ride the tweaks above using the topics/formats that "
+                    "already draw the most comments and saves.")
+
+    return recs[:6]
 
 
 def predict_one(payload: dict) -> dict:
@@ -275,7 +382,11 @@ def predict_one(payload: dict) -> dict:
     )
 
     important_factors = _local_important_factors(bundle, payload, eng_df)
-    recommendations = _recommendations(bundle, payload, eng_df, performance_score)
+    recommendations = _recommendations(
+        bundle, payload, eng_df, performance_score,
+        expected_views=views_pred, expected_engagement_rate=engagement_pred,
+        important_factors=important_factors,
+    )
 
     return {
         "performance_score": performance_score,

@@ -7,7 +7,7 @@ import { X } from 'lucide-react'
 
 const categoryColor: Record<string, string> = {
   Excellent: 'text-score-high bg-score-high/10',
-  Good: 'text-teal bg-teal/10',
+  Good: 'text-accent-teal bg-accent-teal/10',
   Moderate: 'text-score-medium bg-score-medium/10',
   Low: 'text-score-low bg-score-low/10',
 }
@@ -24,7 +24,7 @@ export default function History() {
     setError(null)
     fetchHistory()
       .then((res) => setItems(res.items))
-      .catch(() => setError('Could not load prediction history. Is the FastAPI backend running on :8000?'))
+      .catch(() => setError('Could not load prediction history. Make sure the backend is running and VITE_API_URL is set correctly.'))
       .finally(() => setLoading(false))
   }
 
@@ -53,7 +53,7 @@ export default function History() {
             title="No predictions yet"
             description="Once you run a prediction, it'll show up here with its score, category, and forecasted metrics."
             action={
-              <Link to="/predict" className="focus-ring mt-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-bg">
+              <Link to="/predict" className="focus-ring mt-2 rounded-lg bg-vibrant-cta px-5 py-2.5 text-sm font-semibold text-white shadow-glow-pink">
                 Make your first prediction
               </Link>
             }

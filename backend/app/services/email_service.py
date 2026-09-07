@@ -44,7 +44,7 @@ def send_verification_email(to_email: str, token: str) -> None:
     msg["From"] = f"{EMAIL_FROM_NAME} <{EMAIL_USER}>"
     msg["To"] = to_email
 
-    text = f"Welcome to PostPulse!\n\nVerify your email by visiting:\n{verify_link}\n\nThis link expires in 24 hours."
+    text = f"Welcome to PostPulse!\n\nVerify your email by visiting:\n{verify_link}\n\nThis link expires in 24 hours.\n\nIf you don't see this email in your inbox, please check your spam or junk folder."
     html = f"""
     <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
       <h2>Welcome to PostPulse</h2>
@@ -52,7 +52,8 @@ def send_verification_email(to_email: str, token: str) -> None:
       <p><a href="{verify_link}" style="background:#FF6B4A;color:#fff;padding:12px 24px;
          border-radius:8px;text-decoration:none;display:inline-block;">Verify Email</a></p>
       <p style="color:#888;font-size:13px;">This link expires in 24 hours. If you didn't sign up
-      for PostPulse, you can ignore this email.</p>
+      for PostPulse, you can ignore this email. If you don't see this in your inbox, check your
+      spam or junk folder.</p>
     </div>
     """
     msg.attach(MIMEText(text, "plain"))

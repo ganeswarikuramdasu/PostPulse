@@ -58,7 +58,7 @@ export default function Admin() {
           {stats && (
             <div className="mt-8 grid gap-4 sm:grid-cols-4">
               <div className="rounded-xl border border-border bg-surface p-5">
-                <Users size={16} className="text-teal" />
+                <Users size={16} className="text-accent-teal" />
                 <p className="mt-2 font-mono text-2xl font-semibold text-text-primary">{stats.total_users}</p>
                 <p className="text-xs text-text-muted">Total users</p>
               </div>
@@ -115,7 +115,7 @@ export default function Admin() {
                       <button
                         onClick={() => toggleAdmin(u)}
                         disabled={u.id === currentUser?.id}
-                        className={`focus-ring rounded-full px-2.5 py-1 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${u.is_admin ? 'bg-teal/10 text-teal' : 'bg-surface-raised text-text-secondary'}`}
+                        className={`focus-ring rounded-full px-2.5 py-1 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${u.is_admin ? 'bg-accent-teal/10 text-accent-teal' : 'bg-surface-raised text-text-secondary'}`}
                       >
                         {u.is_admin ? 'Admin' : 'User'}
                       </button>

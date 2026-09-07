@@ -1,62 +1,62 @@
 [
   {
-    "feature": "num__historical_engagement_score",
-    "importance": 0.2106666666666666
-  },
-  {
     "feature": "num__historical_avg_views",
-    "importance": 0.1939583333333333
+    "importance": 0.14654166666666665
   },
   {
-    "feature": "num__posting_hour",
-    "importance": 0.038124999999999964
-  },
-  {
-    "feature": "cat__content_type_image",
-    "importance": 0.006999999999999937
-  },
-  {
-    "feature": "cat__content_type_reel",
-    "importance": 0.006833333333333275
-  },
-  {
-    "feature": "num__followers",
-    "importance": 0.006041666666666598
-  },
-  {
-    "feature": "num__follower_normalized_performance",
-    "importance": 0.00574999999999995
-  },
-  {
-    "feature": "cat__account_type_creator",
-    "importance": 0.0011249999999999594
-  },
-  {
-    "feature": "cat__day_of_week_Wednesday",
-    "importance": 0.0009999999999999593
-  },
-  {
-    "feature": "cat__posting_hour_category_late_night",
-    "importance": 0.0005416666666666348
-  },
-  {
-    "feature": "cat__day_of_week_Saturday",
-    "importance": 0.00029166666666663454
+    "feature": "num__historical_engagement_score",
+    "importance": 0.14225
   },
   {
     "feature": "num__historical_engagement_rate",
-    "importance": 0.0002499999999999447
+    "importance": 0.022749999999999992
   },
   {
-    "feature": "cat__posting_hour_category_morning",
-    "importance": 0.0002083333333333104
+    "feature": "num__posting_hour",
+    "importance": 0.02162499999999999
+  },
+  {
+    "feature": "num__followers",
+    "importance": 0.018125000000000002
+  },
+  {
+    "feature": "num__follower_normalized_performance",
+    "importance": 0.014083333333333309
+  },
+  {
+    "feature": "cat__posting_hour_category_late_night",
+    "importance": 0.009291666666666643
+  },
+  {
+    "feature": "cat__content_type_image",
+    "importance": 0.00787499999999998
+  },
+  {
+    "feature": "cat__content_type_reel",
+    "importance": 0.006083333333333357
   },
   {
     "feature": "cat__posting_hour_category_evening",
-    "importance": 0.0002083333333332965
+    "importance": 0.003291666666666679
   },
   {
-    "feature": "cat__creator_category_Lifestyle",
-    "importance": 4.166666666663432e-05
+    "feature": "num__creator_experience_score",
+    "importance": 0.0027500000000000024
+  },
+  {
+    "feature": "num__description_length",
+    "importance": 0.0019166666666666637
+  },
+  {
+    "feature": "num__hashtag_density",
+    "importance": 0.001375000000000015
+  },
+  {
+    "feature": "cat__day_of_week_Monday",
+    "importance": 0.0013750000000000012
+  },
+  {
+    "feature": "num__is_weekend",
+    "importance": 0.0012916666666666632
   }
 ]

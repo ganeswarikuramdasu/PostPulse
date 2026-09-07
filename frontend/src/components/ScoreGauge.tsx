@@ -8,10 +8,10 @@ interface ScoreGaugeProps {
 }
 
 function colorForScore(score: number) {
-  if (score >= 85) return '#34D399' // Excellent
+  if (score >= 85) return '#4ADE80' // Excellent
   if (score >= 70) return '#2DD4BF' // Good
-  if (score >= 40) return '#FBBF24' // Moderate
-  return '#FB7185' // Low
+  if (score >= 40) return '#FFC531' // Moderate
+  return '#FF4D6D' // Low
 }
 
 function categoryForScore(score: number) {
@@ -69,7 +69,7 @@ export default function ScoreGauge({ score, size = 220, label, animate = true }:
         <path
           d={`M ${trackStart.x} ${trackStart.y} A ${radius} ${radius} 0 0 1 ${trackEnd.x} ${trackEnd.y}`}
           fill="none"
-          stroke="#1A2233"
+          stroke="#33195F"
           strokeWidth={14}
           strokeLinecap="round"
         />
@@ -88,11 +88,11 @@ export default function ScoreGauge({ score, size = 220, label, animate = true }:
           className="font-mono"
           fontSize={size * 0.2}
           fontWeight={600}
-          fill="#EDF1F7"
+          fill="#FDF4FF"
         >
           {Math.round(displayScore)}
         </text>
-        <text x={cx} y={cy + 16} textAnchor="middle" className="font-mono" fontSize={12} fill="#8891A5">
+        <text x={cx} y={cy + 16} textAnchor="middle" className="font-mono" fontSize={12} fill="#8B7BB8">
           / 100
         </text>
       </svg>

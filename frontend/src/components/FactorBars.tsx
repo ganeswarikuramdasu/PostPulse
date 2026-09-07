@@ -12,7 +12,7 @@ export default function FactorBars({ factors }: { factors: ImportantFactor[] }) 
           </div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-surface-raised">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-teal to-accent transition-all duration-700"
+              className="h-full rounded-full bg-gradient-to-r from-accent-orange via-accent-pink to-accent-violet transition-all duration-700"
               style={{ width: `${(factor.importance / maxImportance) * 100}%` }}
             />
           </div>

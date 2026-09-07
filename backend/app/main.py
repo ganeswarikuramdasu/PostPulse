@@ -19,7 +19,7 @@ app = FastAPI(
 # ALLOWED_ORIGINS: comma-separated list for production (e.g. your deployed
 # frontend's URL). Falls back to localhost dev ports if unset, so local
 # development keeps working with zero configuration.
-_default_origins = "http://localhost:5173,http://127.0.0.1:5173"
+_default_origins = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,http://localhost:5175,http://127.0.0.1:5175"
 allowed_origins = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", _default_origins).split(",") if o.strip()]
 
 app.add_middleware(
