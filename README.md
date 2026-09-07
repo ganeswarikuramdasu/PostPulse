@@ -13,7 +13,7 @@ the changes it predicts will lift reach.
 
 <div align="center">
 
-**🚀 Live demo — frontend:** *your Vercel URL here*
+**🚀 Live demo — frontend:** [`https://post-pulse-eta.vercel.app`](https://post-pulse-eta.vercel.app)
 **🔌 Live API:** [`https://postpulse-api-ksm5.onrender.com`](https://postpulse-api-ksm5.onrender.com) · interactive docs at `/docs`
 **📊 Try it:** register → verify → predict
 
@@ -427,7 +427,7 @@ See `DEPLOYMENT.md` for the full table. The key ones:
 | `ALLOWED_ORIGINS` | Yes | Your deployed frontend's exact URL(s), comma-separated |
 | `ADMIN_BOOTSTRAP_EMAIL` | Recommended | Set before first registering that address |
 | `BREVO_API_KEY` | Recommended | Enables real emails (free 300/day over HTTPS). Without it, links print to server logs — fine for testing |
-| `FRONTEND_URL` | Yes (if emailing) | Base URL used to build verification links |
+| `FRONTEND_URL` | Yes (if emailing) | Base URL used to build verification links — live: `https://post-pulse-eta.vercel.app` |
 | `VITE_API_URL` (frontend build-time) | Yes | Your deployed backend's `/api` URL |
 
 Run the backend without `--reload` in production, with multiple workers:
