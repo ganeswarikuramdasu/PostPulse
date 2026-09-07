@@ -30,9 +30,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Mount routes under /api (standard convention)
 app.include_router(router, prefix="/api")
 app.include_router(auth_router, prefix="/api")
 app.include_router(admin_router, prefix="/api")
+
+# Also mount directly at root so calls work even if frontend VITE_API_URL
+# is set to https://<domain> without the /api suffix (e.g. /auth/register, /auth/login)
+app.include_router(router)
+app.include_router(auth_router)
+app.include_router(admin_router)
 
 
 @app.on_event("startup")

@@ -1,7 +1,8 @@
 import axios from 'axios'
 import type { ContentInput, PredictionResponse, HistoryResponse, ModelInfoResponse } from '../types'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001/api'
+const rawBaseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:8001/api').trim().replace(/\/+$/, '')
+const API_BASE_URL = rawBaseUrl.endsWith('/api') ? rawBaseUrl : `${rawBaseUrl}/api`
 
 const client = axios.create({
   baseURL: API_BASE_URL,
