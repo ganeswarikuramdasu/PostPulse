@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from 'recharts'
-import { Eye, Heart, Gauge, Lightbulb, Target, ListChecks, RotateCcw } from 'lucide-react'
+import { Eye, Heart, Gauge, Lightbulb, Target, ListChecks, RotateCcw, Calendar, Clock, Hash, TrendingUp } from 'lucide-react'
 import ScoreGauge from '../components/ScoreGauge'
 import MetricCard from '../components/MetricCard'
 import FactorBars from '../components/FactorBars'
@@ -34,6 +34,10 @@ export default function Results() {
     probability: Math.round(prob * 1000) / 10,
   }))
 
+  const schedule = result.posting_schedule
+  const captionStrat = result.caption_strategy
+  const hashtagStrat = result.hashtag_strategy
+
   return (
     <div className="mx-auto max-w-5xl px-6 py-14">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -52,7 +56,6 @@ export default function Results() {
       </div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[300px_1fr]">
-        {/* Main prediction card */}
         <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-surface p-8">
           <ScoreGauge score={result.performance_score} />
           <p className="mt-4 text-center text-sm text-text-secondary">
@@ -60,7 +63,6 @@ export default function Results() {
           </p>
         </div>
 
-        {/* Metric cards */}
         <div className="grid gap-4 sm:grid-cols-3">
           <MetricCard
             label="Expected Reach"
@@ -100,7 +102,6 @@ export default function Results() {
         </div>
       </div>
 
-      {/* Important factors */}
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <div className="rounded-xl border border-border bg-surface p-6">
           <h3 className="mb-5 font-display text-lg font-semibold text-text-primary">Important factors</h3>
@@ -137,6 +138,13 @@ export default function Results() {
             <li className="flex gap-3">
               <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
               <span>
+                <strong className="text-text-primary">Optimal schedules</strong> are found by the model testing every
+                day/hour combination for your specific post.
+              </span>
+            </li>
+            <li className="flex gap-3">
+              <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
+              <span>
                 <strong className="text-text-primary">Change one variable</strong> at a time and re-run to see how the
                 forecast responds - that's how you find your biggest reach lever.
               </span>
@@ -145,7 +153,249 @@ export default function Results() {
         </div>
       </div>
 
-      {/* Suggestions to increase views */}
+      {schedule && (
+        <div className="mt-6 rounded-2xl border border-accent/25 bg-gradient-to-br from-surface to-surface-raised p-6 shadow-glow-violet">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-vibrant-cta text-white">
+              <Calendar size={20} />
+            </div>
+            <div>
+              <h2 className="font-display text-xl font-semibold text-text-primary">Optimal Posting Schedule</h2>
+              <p className="text-xs text-text-secondary">
+                The model tested all 7 days x 24 hours for your post. Here are the best times.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-4 sm:grid-cols-3">
+            <div className="rounded-xl border border-border bg-surface bg-opacity-60 p-4">
+              <p className="text-xs font-medium text-text-muted uppercase tracking-wide">Best Day</p>
+              <p className="mt-1 font-display text-lg font-semibold text-text-primary">{schedule.best_day}</p>
+              <p className="text-sm text-text-secondary">~{schedule.best_day_views.toLocaleString()} views</p>
+              {schedule.best_day !== schedule.current_day && (
+                <p className="mt-1 text-xs text-green-400">
+                  +{schedule.day_rankings.find(d => d.day === schedule.best_day)?.delta_vs_current.toLocaleString()} vs current
+                </p>
+              )}
+            </div>
+            <div className="rounded-xl border border-border bg-surface bg-opacity-60 p-4">
+              <p className="text-xs font-medium text-text-muted uppercase tracking-wide">Best Hour</p>
+              <p className="mt-1 font-display text-lg font-semibold text-text-primary">{schedule.best_hour}</p>
+              <p className="text-sm text-text-secondary">~{schedule.best_hour_views.toLocaleString()} views</p>
+              {schedule.best_hour !== schedule.current_hour && (
+                <p className="mt-1 text-xs text-green-400">
+                  +{schedule.hour_rankings.find(h => h.hour === schedule.best_hour)?.delta_vs_current.toLocaleString()} vs current
+                </p>
+              )}
+            </div>
+            <div className="rounded-xl border border-accent/30 bg-accent/5 p-4">
+              <p className="text-xs font-medium text-accent uppercase tracking-wide">Best Combined Slot</p>
+              <p className="mt-1 font-display text-lg font-semibold text-text-primary">{schedule.best_slot}</p>
+              <p className="text-sm text-text-secondary">~{schedule.best_slot_views.toLocaleString()} views</p>
+              <p className="mt-1 text-xs text-green-400">
+                +{schedule.potential_gain.toLocaleString()} more views
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-6 lg:grid-cols-2">
+            <div>
+              <h4 className="mb-3 text-sm font-semibold text-text-primary flex items-center gap-2">
+                <Calendar size={14} className="text-accent" /> Day Rankings
+              </h4>
+              <div className="space-y-2">
+                {schedule.day_rankings.map((d) => {
+                  const maxViews = schedule.day_rankings[0].predicted_views
+                  const pct = (d.predicted_views / maxViews) * 100
+                  return (
+                    <div key={d.day} className="flex items-center gap-3">
+                      <span className={`w-24 text-xs font-medium ${d.is_current ? 'text-accent' : 'text-text-secondary'}`}>
+                        {d.day} {d.is_current && '(now)'}
+                      </span>
+                      <div className="flex-1 h-2 rounded-full bg-border overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${d.is_current ? 'bg-accent' : 'bg-vibrant-cta/60'}`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <span className="w-16 text-right text-xs text-text-muted">
+                        {d.delta_vs_current >= 0 ? '+' : ''}{d.delta_vs_current.toLocaleString()}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div>
+              <h4 className="mb-3 text-sm font-semibold text-text-primary flex items-center gap-2">
+                <Clock size={14} className="text-accent" /> Top Hours
+              </h4>
+              <div className="space-y-2">
+                {schedule.hour_rankings.map((h) => {
+                  const maxViews = schedule.hour_rankings[0].predicted_views
+                  const pct = (h.predicted_views / maxViews) * 100
+                  return (
+                    <div key={h.hour} className="flex items-center gap-3">
+                      <span className={`w-16 text-xs font-medium ${h.is_current ? 'text-accent' : 'text-text-secondary'}`}>
+                        {h.hour} {h.is_current && '(now)'}
+                      </span>
+                      <div className="flex-1 h-2 rounded-full bg-border overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${h.is_current ? 'bg-accent' : 'bg-vibrant-cta/60'}`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <span className="w-16 text-right text-xs text-text-muted">
+                        {h.delta_vs_current >= 0 ? '+' : ''}{h.delta_vs_current.toLocaleString()}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+
+          {schedule.top_time_slots.length > 0 && (
+            <div className="mt-5">
+              <h4 className="mb-3 text-sm font-semibold text-text-primary">Top 5 Time Slots</h4>
+              <div className="grid gap-2 sm:grid-cols-5">
+                {schedule.top_time_slots.map((slot, i) => (
+                  <div key={slot.time_slot} className="rounded-lg border border-border bg-surface bg-opacity-60 p-3 text-center">
+                    <p className="text-xs text-text-muted">#{i + 1}</p>
+                    <p className="text-sm font-semibold text-text-primary">{slot.time_slot}</p>
+                    <p className="text-xs text-text-secondary">~{slot.predicted_views.toLocaleString()} views</p>
+                    <p className="text-xs text-green-400">+{slot.delta_vs_current.toLocaleString()}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        {captionStrat && (
+          <div className="rounded-2xl border border-accent/25 bg-gradient-to-br from-surface to-surface-raised p-6 shadow-glow-violet">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-vibrant-cta text-white">
+                <TrendingUp size={20} />
+              </div>
+              <div>
+                <h2 className="font-display text-xl font-semibold text-text-primary">Caption Strategy</h2>
+                <p className="text-xs text-text-secondary">
+                  Tested {captionStrat.tested_lengths.length} caption lengths for your post.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-xl border border-border bg-surface bg-opacity-60 p-4">
+              <p className="text-sm text-text-secondary">{captionStrat.advice}</p>
+              <div className="mt-3 flex items-center gap-4">
+                <div>
+                  <p className="text-xs text-text-muted">Current</p>
+                  <p className="font-mono text-lg font-semibold text-text-primary">{captionStrat.current_length} chars</p>
+                </div>
+                <div className="text-accent text-lg">→</div>
+                <div>
+                  <p className="text-xs text-text-muted">Optimal</p>
+                  <p className="font-mono text-lg font-semibold text-green-400">{captionStrat.optimal_length} chars</p>
+                </div>
+                {captionStrat.potential_gain > 0 && (
+                  <div className="ml-auto text-right">
+                    <p className="text-xs text-text-muted">Potential gain</p>
+                    <p className="text-sm font-semibold text-green-400">+{captionStrat.potential_gain.toLocaleString()} views</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <p className="mb-2 text-xs font-medium text-text-muted">Tested lengths (by predicted views)</p>
+              <div className="space-y-1.5">
+                {captionStrat.tested_lengths.map((l) => {
+                  const maxViews = captionStrat.tested_lengths[0].predicted_views
+                  const pct = (l.predicted_views / maxViews) * 100
+                  return (
+                    <div key={l.length} className="flex items-center gap-2">
+                      <span className={`w-16 text-xs font-medium ${l.is_current ? 'text-accent' : 'text-text-secondary'}`}>
+                        {l.length}c {l.is_current && '*'}
+                      </span>
+                      <div className="flex-1 h-1.5 rounded-full bg-border overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${l.is_current ? 'bg-accent' : 'bg-vibrant-cta/60'}`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {hashtagStrat && (
+          <div className="rounded-2xl border border-accent/25 bg-gradient-to-br from-surface to-surface-raised p-6 shadow-glow-violet">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-vibrant-cta text-white">
+                <Hash size={20} />
+              </div>
+              <div>
+                <h2 className="font-display text-xl font-semibold text-text-primary">Hashtag Strategy</h2>
+                <p className="text-xs text-text-secondary">
+                  Tested {hashtagStrat.tested_counts.length} hashtag counts for your post.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-xl border border-border bg-surface bg-opacity-60 p-4">
+              <p className="text-sm text-text-secondary">{hashtagStrat.advice}</p>
+              <div className="mt-3 flex items-center gap-4">
+                <div>
+                  <p className="text-xs text-text-muted">Current</p>
+                  <p className="font-mono text-lg font-semibold text-text-primary">{hashtagStrat.current_count}</p>
+                </div>
+                <div className="text-accent text-lg">→</div>
+                <div>
+                  <p className="text-xs text-text-muted">Optimal</p>
+                  <p className="font-mono text-lg font-semibold text-green-400">{hashtagStrat.optimal_count}</p>
+                </div>
+                {hashtagStrat.potential_gain > 0 && (
+                  <div className="ml-auto text-right">
+                    <p className="text-xs text-text-muted">Potential gain</p>
+                    <p className="text-sm font-semibold text-green-400">+{hashtagStrat.potential_gain.toLocaleString()} views</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <p className="mb-2 text-xs font-medium text-text-muted">Tested counts (by predicted views)</p>
+              <div className="space-y-1.5">
+                {hashtagStrat.tested_counts.map((c) => {
+                  const maxViews = hashtagStrat.tested_counts[0].predicted_views
+                  const pct = (c.predicted_views / maxViews) * 100
+                  return (
+                    <div key={c.count} className="flex items-center gap-2">
+                      <span className={`w-14 text-xs font-medium ${c.is_current ? 'text-accent' : 'text-text-secondary'}`}>
+                        #{c.count} {c.is_current && '*'}
+                      </span>
+                      <div className="flex-1 h-1.5 rounded-full bg-border overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${c.is_current ? 'bg-accent' : 'bg-vibrant-cta/60'}`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
       {result.recommendations.length > 0 && (
         <div className="mt-6 rounded-2xl border border-accent/25 bg-gradient-to-br from-surface to-surface-raised p-6 shadow-glow-violet">
           <div className="flex items-center gap-3">
@@ -153,9 +403,9 @@ export default function Results() {
               <Target size={20} />
             </div>
             <div>
-              <h2 className="font-display text-xl font-semibold text-text-primary">Boost your views</h2>
+              <h2 className="font-display text-xl font-semibold text-text-primary">Quick Tips</h2>
               <p className="text-xs text-text-secondary">
-                Actionable suggestions tailored to your inputs to help raise reach and engagement.
+                Actionable suggestions ranked by predicted impact on your reach.
               </p>
             </div>
           </div>
@@ -173,7 +423,7 @@ export default function Results() {
 
           <p className="mt-4 flex items-center gap-2 text-xs text-text-muted">
             <ListChecks size={13} />
-            Tweak the ones you can (posting time, hashtags, CTA, caption) and re-run the prediction to compare.
+            Tweak the ones you can and re-run the prediction to compare.
           </p>
         </div>
       )}

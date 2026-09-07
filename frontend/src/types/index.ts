@@ -24,6 +24,74 @@ export interface ImportantFactor {
   description: string
 }
 
+export interface TimeSlot {
+  time_slot: string
+  predicted_views: number
+  delta_vs_current: number
+}
+
+export interface DayRanking {
+  day: string
+  predicted_views: number
+  delta_vs_current: number
+  is_current: boolean
+}
+
+export interface HourRanking {
+  hour: string
+  predicted_views: number
+  delta_vs_current: number
+  is_current: boolean
+}
+
+export interface PostingSchedule {
+  best_day: string
+  best_day_views: number
+  best_hour: string
+  best_hour_views: number
+  current_day: string
+  current_hour: string
+  current_slot_views: number
+  best_slot: string
+  best_slot_views: number
+  potential_gain: number
+  top_time_slots: TimeSlot[]
+  day_rankings: DayRanking[]
+  hour_rankings: HourRanking[]
+}
+
+export interface TestedLength {
+  length: number
+  predicted_views: number
+  delta_vs_current: number
+  is_current: boolean
+}
+
+export interface CaptionStrategy {
+  current_length: number
+  optimal_length: number
+  optimal_views: number
+  potential_gain: number
+  advice: string
+  tested_lengths: TestedLength[]
+}
+
+export interface TestedCount {
+  count: number
+  predicted_views: number
+  delta_vs_current: number
+  is_current: boolean
+}
+
+export interface HashtagStrategy {
+  current_count: number
+  optimal_count: number
+  optimal_views: number
+  potential_gain: number
+  advice: string
+  tested_counts: TestedCount[]
+}
+
 export interface PredictionResponse {
   performance_score: number
   performance_category: 'Low' | 'Moderate' | 'Good' | 'Excellent'
@@ -34,6 +102,9 @@ export interface PredictionResponse {
   expected_engagement_rate: number
   important_factors: ImportantFactor[]
   recommendations: string[]
+  posting_schedule?: PostingSchedule | null
+  caption_strategy?: CaptionStrategy | null
+  hashtag_strategy?: HashtagStrategy | null
   data_quality_notice?: string | null
   signal_detected: boolean
   prediction_id?: number

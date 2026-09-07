@@ -204,32 +204,200 @@ def _fmt_views(n: float) -> str:
     return f"{int(round(n))}"
 
 
+DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+
+
+def _posting_schedule_analysis(bundle, raw: dict, base_views: float) -> dict:
+    """Sweep all 7 days x 24 hours through the views model to find the
+    optimal posting schedule. Returns structured data with best day, best hour,
+    top time slots, and a heatmap-ready grid of predicted views."""
+    current_day = raw.get("day_of_week", "Monday")
+    current_hour = int(raw.get("posting_hour", 12))
+
+    day_views = {}
+    for day in DAYS_OF_WEEK:
+        trial = dict(raw)
+        trial["day_of_week"] = day
+        day_views[day] = _infer_views(bundle, trial)
+
+    hour_views = {}
+    for hour in range(24):
+        trial = dict(raw)
+        trial["posting_hour"] = hour
+        hour_views[hour] = _infer_views(bundle, trial)
+
+    best_day = max(day_views, key=day_views.get)
+    best_hour = max(hour_views, key=hour_views.get)
+
+    slot_views = {}
+    for day in DAYS_OF_WEEK:
+        for hour in range(24):
+            trial = dict(raw)
+            trial["day_of_week"] = day
+            trial["posting_hour"] = hour
+            slot_views[f"{day} {hour}:00"] = _infer_views(bundle, trial)
+
+    top_slots = sorted(slot_views.items(), key=lambda x: -x[1])[:5]
+
+    current_views = slot_views.get(f"{current_day} {current_hour}:00", base_views)
+    best_views = slot_views[top_slots[0][0]]
+
+    day_ranking = sorted(day_views.items(), key=lambda x: -x[1])
+    hour_ranking = sorted(hour_views.items(), key=lambda x: -x[1])
+
+    day_labels = []
+    for day, views in day_ranking:
+        delta = views - base_views
+        day_labels.append({
+            "day": day,
+            "predicted_views": round(views),
+            "delta_vs_current": round(delta),
+            "is_current": day == current_day,
+        })
+
+    hour_labels = []
+    for hour, views in hour_ranking[:6]:
+        delta = views - base_views
+        hour_labels.append({
+            "hour": f"{hour}:00",
+            "predicted_views": round(views),
+            "delta_vs_current": round(delta),
+            "is_current": hour == current_hour,
+        })
+
+    slot_labels = []
+    for slot_name, views in top_slots:
+        delta = views - base_views
+        slot_labels.append({
+            "time_slot": slot_name,
+            "predicted_views": round(views),
+            "delta_vs_current": round(delta),
+        })
+
+    return {
+        "best_day": best_day,
+        "best_day_views": round(day_views[best_day]),
+        "best_hour": f"{best_hour}:00",
+        "best_hour_views": round(hour_views[best_hour]),
+        "current_day": current_day,
+        "current_hour": f"{current_hour}:00",
+        "current_slot_views": round(current_views),
+        "best_slot": top_slots[0][0],
+        "best_slot_views": round(best_views),
+        "potential_gain": round(best_views - base_views),
+        "top_time_slots": slot_labels,
+        "day_rankings": day_labels,
+        "hour_rankings": hour_labels,
+    }
+
+
+def _caption_strategy(bundle, raw: dict, base_views: float) -> dict:
+    """Test multiple caption lengths through the views model to find the
+    optimal length for this specific post."""
+    current_len = int(raw.get("description_length", 120))
+    test_lengths = [40, 60, 80, 100, 120, 140, 160, 200, 250, 300]
+
+    length_views = {}
+    for length in test_lengths:
+        trial = dict(raw)
+        trial["description_length"] = length
+        length_views[length] = _infer_views(bundle, trial)
+
+    best_length = max(length_views, key=length_views.get)
+    best_views = length_views[best_length]
+    current_views = length_views.get(current_len, base_views)
+
+    length_ranking = sorted(length_views.items(), key=lambda x: -x[1])
+    top_lengths = []
+    for length, views in length_ranking[:4]:
+        top_lengths.append({
+            "length": length,
+            "predicted_views": round(views),
+            "delta_vs_current": round(views - base_views),
+            "is_current": length == current_len,
+        })
+
+    if best_length == current_len:
+        advice = f"Your caption length ({current_len} chars) is already optimal for this post."
+    elif best_length > current_len:
+        advice = (f"Lengthen your caption from {current_len} to ~{best_length} characters. "
+                  f"The model predicts ~{_fmt_views(best_views - current_views)} more views at this length.")
+    else:
+        advice = (f"Tighten your caption from {current_len} to ~{best_length} characters. "
+                  f"The model predicts ~{_fmt_views(best_views - current_views)} more views at this length.")
+
+    return {
+        "current_length": current_len,
+        "optimal_length": best_length,
+        "optimal_views": round(best_views),
+        "potential_gain": round(best_views - base_views),
+        "advice": advice,
+        "tested_lengths": top_lengths,
+    }
+
+
+def _hashtag_strategy(bundle, raw: dict, base_views: float) -> dict:
+    """Test multiple hashtag counts through the views model to find the
+    optimal number for this specific post."""
+    current_tags = int(raw.get("hashtags", 8))
+    test_counts = [2, 4, 5, 6, 7, 8, 9, 10, 12, 15, 20]
+
+    tag_views = {}
+    for count in test_counts:
+        trial = dict(raw)
+        trial["hashtags"] = count
+        tag_views[count] = _infer_views(bundle, trial)
+
+    best_count = max(tag_views, key=tag_views.get)
+    best_views = tag_views[best_count]
+    current_views = tag_views.get(current_tags, base_views)
+
+    tag_ranking = sorted(tag_views.items(), key=lambda x: -x[1])
+    top_counts = []
+    for count, views in tag_ranking[:4]:
+        top_counts.append({
+            "count": count,
+            "predicted_views": round(views),
+            "delta_vs_current": round(views - base_views),
+            "is_current": count == current_tags,
+        })
+
+    if best_count == current_tags:
+        advice = f"Your hashtag count ({current_tags}) is already optimal for this post."
+    elif best_count > current_tags:
+        advice = (f"Increase hashtags from {current_tags} to {best_count}. "
+                  f"The model predicts ~{_fmt_views(best_views - current_views)} more views at this count.")
+    else:
+        advice = (f"Reduce hashtags from {current_tags} to {best_count}. "
+                  f"The model predicts ~{_fmt_views(best_views - current_views)} fewer spam signals, netting ~{_fmt_views(best_views - current_views)} more views.")
+
+    return {
+        "current_count": current_tags,
+        "optimal_count": best_count,
+        "optimal_views": round(best_views),
+        "potential_gain": round(best_views - base_views),
+        "advice": advice,
+        "tested_counts": top_counts,
+    }
+
+
 def _recommendations(bundle, raw: dict, eng: pd.DataFrame, performance_score: float,
                      expected_views: float = None, expected_engagement_rate: float = None,
-                     important_factors: list = None) -> list:
+                     important_factors: list = None) -> dict:
     data_quality = bundle.get("data_quality", {})
     if not data_quality.get("signal_detected", True):
-        # Honest mode: the training data showed no relationship between any
-        # feature and any outcome, so per-input recommendations would be
-        # fabricated. Say so plainly instead of inventing generic-sounding
-        # advice dressed up as model-driven insight.
-        return [
-            "This model's training data (see README) showed no measurable relationship between "
-            "any input and post performance, so we can't responsibly tell you which specific "
-            "changes would help - doing so would be a guess dressed up as an insight.",
-            "The score and forecasts above are close to the dataset average for every input, by design.",
-            "If you're testing this app: try changing followers, hashtags, or posting hour dramatically "
-            "and notice the score barely moves - that's the honest behavior of a model with no signal "
-            "to learn from, not a hidden feature.",
-        ]
+        return {
+            "quick_tips": [
+                "This model's training data showed no measurable relationship between "
+                "any input and post performance, so we can't responsibly tell you which specific "
+                "changes would help - doing so would be a guess dressed up as an insight.",
+                "The score and forecasts above are close to the dataset average for every input, by design.",
+            ],
+            "posting_schedule": None,
+            "caption_strategy": None,
+            "hashtag_strategy": None,
+        }
 
-    # ------------------------------------------------------------------
-    # MODEL-DRIVEN what-if recommendations.
-    # Each lever re-runs the *views model* on a single-variable mutation of
-    # the user's input, so every suggestion is backed by the model's own
-    # predicted change in views, sorted by real impact. No hand-written
-    # "best practice" that the model doesn't actually reward is reported.
-    # ------------------------------------------------------------------
     base_views = _infer_views(bundle, raw)
     levers: list = []
 
@@ -238,7 +406,7 @@ def _recommendations(bundle, raw: dict, eng: pd.DataFrame, performance_score: fl
             return
         delta = _infer_views(bundle, modified) - base_views
         if delta <= 0:
-            return  # only surface changes the model says actually help
+            return
         levers.append({
             "delta": delta,
             "text": f"{summary} Model estimate: ~{_fmt_views(delta)} more views.",
@@ -250,88 +418,85 @@ def _recommendations(bundle, raw: dict, eng: pd.DataFrame, performance_score: fl
     desc_len = int(raw.get("description_length", 0))
     hour = int(raw.get("posting_hour", 12))
 
-    # 1. Content format: reel is the discovery-optimised baseline for this model.
     if content_type != "reel":
         trial = dict(raw); trial["content_type"] = "reel"
         record("Format -> reel", trial,
                f"Post this as a reel instead of {content_type} - reels are the format this model associates "
                f"with the widest non-follower reach.")
 
-    # 2. Hashtag count: nudge toward the model's sweet spot (~8).
-    target_hashtags = 8 if hashtags < 8 else (6 if hashtags > 10 else hashtags)
-    if target_hashtags != hashtags:
-        trial = dict(raw); trial["hashtags"] = target_hashtags
-        record("Hashtags", trial,
-               f"{'Raise' if target_hashtags > hashtags else 'Trim'} hashtags from {hashtags} to {target_hashtags} "
-               f"- this model links that range to better discoverability.")
-
-    # 3. Call-to-action.
     if not cta:
         trial = dict(raw); trial["has_call_to_action"] = 1
         record("Add a CTA", trial,
                'Add an explicit call-to-action ("Comment below", "Save this", "Share") - the model associates '
                'a CTA with higher reach-driving engagement.')
 
-    # 4. Caption length: nudge toward ~140 chars.
-    target_len = desc_len
-    if desc_len > 0 and desc_len < 90:
-        target_len = 140
-    elif desc_len > 200:
-        target_len = 140
-    if target_len != desc_len:
+    posting_schedule = _posting_schedule_analysis(bundle, raw, base_views)
+    caption_strat = _caption_strategy(bundle, raw, base_views)
+    hashtag_strat = _hashtag_strategy(bundle, raw, base_views)
+
+    if caption_strat["potential_gain"] > 0:
+        target_len = caption_strat["optimal_length"]
         trial = dict(raw); trial["description_length"] = target_len
         record("Caption length", trial,
-               f"{'Lengthen' if target_len > desc_len else 'Tighten'} the caption from {desc_len} to ~{target_len} "
-               f"characters - the length this model favors for holding attention.")
+               caption_strat["advice"].split(". ")[0] + ".")
 
-    # 5. Posting hour: toward the model's active evening window.
-    if not (18 <= hour <= 21):
-        target_hour = 19
-        if target_hour != hour:
-            trial = dict(raw); trial["posting_hour"] = target_hour
-            record("Posting time", trial,
-                   f"Post at {target_hour}:00 instead of {hour}:00 - this model's data shows the evening window "
-                   f"drives more initial reach.")
+    if hashtag_strat["potential_gain"] > 0:
+        target_tags = hashtag_strat["optimal_count"]
+        trial = dict(raw); trial["hashtags"] = target_tags
+        record("Hashtag count", trial,
+               hashtag_strat["advice"].split(". ")[0] + ".")
 
-    if not levers:
-        # Nothing the user can tweak moved predicted views up - say so honestly
-        # rather than inventing numbered advice the model doesn't back.
+    if posting_schedule["potential_gain"] > 0:
+        best_day = posting_schedule["best_day"]
+        best_hour_str = posting_schedule["best_hour"]
+        if best_day != raw.get("day_of_week") or best_hour_str != f"{hour}:00":
+            trial = dict(raw)
+            trial["day_of_week"] = best_day
+            trial["posting_hour"] = int(best_hour_str.replace(":00", ""))
+            record("Best time slot", trial,
+                   f"Post on {best_day} at {best_hour_str} instead of {raw.get('day_of_week')} at {hour}:00")
+
+    quick_tips = []
+    if levers:
+        levers.sort(key=lambda l: -l["delta"])
+        quick_tips.append(
+            f"Predicted views now: ~{_fmt_views(base_views)}. Biggest wins for this post, ranked by the model:"
+        )
+        for lev in levers[:5]:
+            quick_tips.append(lev["text"])
+    else:
         engagement = round(float(expected_engagement_rate or raw.get("historical_engagement_rate", 0) or 0), 2)
         if engagement < 3:
-            return [
-                f"Your post looks well set up - the model predicts about {_fmt_views(base_views)} views with it "
-                f"as-is, and none of the usual tweaks (format, caption, hashtags, posting time) would raise that "
-                "prediction. Most content reaches its audience through one thing: a healthy engagement rate.",
-                f"Right now that rate ({engagement}%) is on the low side, and it's the single biggest factor the "
-                "model weighs. Focus on small, steady wins over time - a clear niche, replying to every comment, "
-                "and ending posts with a question - because every bit of engagement predicts more reach.",
-            ]
-        return [
-            f"Your post is already well set up - the model predicts about {_fmt_views(base_views)} views with it "
-            "as-is, and changing the format, caption, hashtags, or posting time wouldn't improve that prediction.",
-            "There's no single edit left to squeeze out more views here. If you want to push higher, focus on "
-            "growing your audience's engagement (regular replies and questions in posts) - it's what the model "
-            "weighs most heavily.",
-        ]
+            quick_tips.append(
+                f"Your post looks well set up - the model predicts ~{_fmt_views(base_views)} views as-is. "
+                f"Most content reaches its audience through engagement, and yours ({engagement}%) is on the low side."
+            )
+            quick_tips.append(
+                "Focus on steady wins: reply to every comment, end posts with a question, and pick a clear niche."
+            )
+        else:
+            quick_tips.append(
+                f"Your post is already well optimized - the model predicts ~{_fmt_views(base_views)} views as-is."
+            )
 
-    levers.sort(key=lambda l: -l["delta"])
-
-    recs = [f"Predicted views now: ~{_fmt_views(base_views)}. Biggest wins for this post, ranked by the model:"]
-    for lev in levers[:5]:
-        recs.append(lev["text"])
-
-    # Add one concise context note grounded in the engagement score if it's a
-    # real weak spot, since no content tweak can instantly fix historical data.
     engagement = round(float(expected_engagement_rate or raw.get("historical_engagement_rate", 0) or 0), 2)
     if engagement < 3:
-        recs.append(f"Your historical engagement rate ({engagement}%) is low - the model weights it heavily, so "
-                    "raising it over time (reply to every comment, end posts with a question) will compound the "
-                    "content tweaks above.")
+        quick_tips.append(
+            f"Your historical engagement rate ({engagement}%) is low - the model weights it heavily, so "
+            "raising it over time will compound the content tweaks above."
+        )
     elif engagement >= 7:
-        recs.append(f"Strong engagement base ({engagement}%) - ride the tweaks above using the topics/formats that "
-                    "already draw the most comments and saves.")
+        quick_tips.append(
+            f"Strong engagement base ({engagement}%) - ride the tweaks above using the topics/formats that "
+            "already draw the most comments and saves."
+        )
 
-    return recs[:6]
+    return {
+        "quick_tips": quick_tips[:6],
+        "posting_schedule": posting_schedule,
+        "caption_strategy": caption_strat,
+        "hashtag_strategy": hashtag_strat,
+    }
 
 
 def predict_one(payload: dict) -> dict:
@@ -397,7 +562,10 @@ def predict_one(payload: dict) -> dict:
         "expected_views": round(views_pred),
         "expected_engagement_rate": round(engagement_pred, 2),
         "important_factors": important_factors,
-        "recommendations": recommendations,
+        "recommendations": recommendations.get("quick_tips", []),
+        "posting_schedule": recommendations.get("posting_schedule"),
+        "caption_strategy": recommendations.get("caption_strategy"),
+        "hashtag_strategy": recommendations.get("hashtag_strategy"),
         "data_quality_notice": data_quality.get("notice"),
         "signal_detected": data_quality.get("signal_detected", True),
     }

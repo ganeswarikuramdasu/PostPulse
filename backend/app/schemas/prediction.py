@@ -63,6 +63,74 @@ class ImportantFactor(BaseModel):
     description: str
 
 
+class TimeSlot(BaseModel):
+    time_slot: str
+    predicted_views: int
+    delta_vs_current: int
+
+
+class DayRanking(BaseModel):
+    day: str
+    predicted_views: int
+    delta_vs_current: int
+    is_current: bool
+
+
+class HourRanking(BaseModel):
+    hour: str
+    predicted_views: int
+    delta_vs_current: int
+    is_current: bool
+
+
+class PostingSchedule(BaseModel):
+    best_day: str
+    best_day_views: int
+    best_hour: str
+    best_hour_views: int
+    current_day: str
+    current_hour: str
+    current_slot_views: int
+    best_slot: str
+    best_slot_views: int
+    potential_gain: int
+    top_time_slots: List[TimeSlot]
+    day_rankings: List[DayRanking]
+    hour_rankings: List[HourRanking]
+
+
+class TestedLength(BaseModel):
+    length: int
+    predicted_views: int
+    delta_vs_current: int
+    is_current: bool
+
+
+class CaptionStrategy(BaseModel):
+    current_length: int
+    optimal_length: int
+    optimal_views: int
+    potential_gain: int
+    advice: str
+    tested_lengths: List[TestedLength]
+
+
+class TestedCount(BaseModel):
+    count: int
+    predicted_views: int
+    delta_vs_current: int
+    is_current: bool
+
+
+class HashtagStrategy(BaseModel):
+    current_count: int
+    optimal_count: int
+    optimal_views: int
+    potential_gain: int
+    advice: str
+    tested_counts: List[TestedCount]
+
+
 class PredictionResponse(BaseModel):
     performance_score: float
     performance_category: str
@@ -73,6 +141,9 @@ class PredictionResponse(BaseModel):
     expected_engagement_rate: float
     important_factors: List[ImportantFactor]
     recommendations: List[str]
+    posting_schedule: Optional[PostingSchedule] = None
+    caption_strategy: Optional[CaptionStrategy] = None
+    hashtag_strategy: Optional[HashtagStrategy] = None
     data_quality_notice: Optional[str] = None
     signal_detected: bool = True
     prediction_id: Optional[int] = None
