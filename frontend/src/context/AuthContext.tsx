@@ -5,7 +5,6 @@ export interface User {
   id: number
   email: string
   is_verified: boolean
-  is_admin: boolean
   plan: string
   created_at: string
 }

@@ -56,7 +56,6 @@ class User(Base):
     email = Column(String(255), unique=True, index=True, nullable=False)
     hashed_password = Column(String(255), nullable=False)
     is_verified = Column(Boolean, default=False, nullable=False)
-    is_admin = Column(Boolean, default=False, nullable=False)
     plan = Column(String(20), default="free", nullable=False)  # "free" | "pro" - foundation for future paid tiers
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 

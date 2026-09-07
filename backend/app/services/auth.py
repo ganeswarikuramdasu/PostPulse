@@ -2,7 +2,7 @@
 auth.py
 
 Password hashing (bcrypt), JWT access tokens (python-jose), and FastAPI
-dependencies for getting the current authenticated / verified / admin user.
+dependencies for getting the current authenticated / verified user.
 
 SECRET_KEY MUST be set via environment variable in any real deployment -
 the default here is only for zero-config local development and is NOT safe
@@ -99,10 +99,4 @@ def get_current_verified_user(user: User = Depends(get_current_user)) -> User:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Please verify your email address before using this feature.",
         )
-    return user
-
-
-def get_current_admin_user(user: User = Depends(get_current_verified_user)) -> User:
-    if not user.is_admin:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required.")
     return user

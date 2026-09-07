@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Activity, ShieldCheck, LogOut } from 'lucide-react'
+import { Activity, LogOut } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 export default function Navbar() {
@@ -47,16 +47,6 @@ export default function Navbar() {
               </Link>
             )
           })}
-          {user?.is_admin && (
-            <Link
-              to="/admin"
-              className={`focus-ring flex items-center gap-1.5 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-                location.pathname === '/admin' ? 'bg-surface-raised text-text-primary' : 'text-text-secondary hover:text-text-primary'
-              }`}
-            >
-              <ShieldCheck size={14} /> Admin
-            </Link>
-          )}
 
           {user ? (
             <div className="ml-2 flex items-center gap-2">

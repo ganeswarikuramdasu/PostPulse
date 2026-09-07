@@ -32,7 +32,7 @@ production architecture (FastAPI + PostgreSQL/Supabase + React).
 | 🤖 **AI part** | Gradient-boosted models predict reach, engagement rate, and performance category — offline-trained, served from a Joblib bundle |
 | 🧠 **Recommendations** | Sweeps 168 day×time slots, 10 caption lengths, 11 hashtag counts through the model to recommend what actually moves the needle |
 | 🧪 **Honesty** | The training data is synthetic and *documented as such*; a real Kaggle dataset that had zero signal was caught and rejected |
-| 🛡️ **Security** | bcrypt hashing, JWT auth, email verification, admin module |
+| 🛡️ **Security** | bcrypt hashing, JWT auth, email verification |
 | 🏗️ **Architecture** | FastAPI backend on Render + React frontend on Vercel + Supabase PostgreSQL |
 
 ---
@@ -48,7 +48,7 @@ production architecture (FastAPI + PostgreSQL/Supabase + React).
 7. [Models & Evaluation](#models--evaluation)
 8. [Explainability](#explainability)
 9. [Recommendation Engine](#recommendation-engine)
-10. [Authentication & Admin](#authentication--admin)
+10. [Authentication](#authentication)
 11. [API Reference](#api-reference)
 12. [Running Locally](#running-locally)
 13. [Email Verification](#email-verification)
@@ -71,7 +71,6 @@ flowchart TD
     F --> G[Trained Models<br/>reach / engagement / category]
     G --> H[Prediction + Explanation]
     H --> A
-    B --> I[Admin: users, plans, stats]
 ```
 
 The model is **trained offline** (`ml/src/train.py`) and served from a Joblib
@@ -107,7 +106,7 @@ Three top-level folders, one job each:
 | Path | What it is |
 |---|---|
 | `backend/app/main.py` | FastAPI app entry point — routers, CORS, startup table creation |
-| `backend/app/api/` | Route handlers: `routes.py` (predict/history), `auth_routes.py`, `admin_routes.py` |
+| `backend/app/api/` | Route handlers: `routes.py` (predict/history), `auth_routes.py` |
 | `backend/app/services/` | Business logic: prediction, auth, email (Brevo) |
 | `backend/app/schemas/` | Pydantic request/response models (`prediction.py`, `auth.py`) |
 | `backend/app/database/db.py` | SQLAlchemy engine + table models |
@@ -119,7 +118,7 @@ Three top-level folders, one job each:
 
 | Path | What it is |
 |---|---|
-| `frontend/src/pages/` | Route pages: Landing, Register, Login, VerifyEmail, Predict, Results, History, Admin |
+| `frontend/src/pages/` | Route pages: Landing, Register, Login, VerifyEmail, Predict, Results, History |
 | `frontend/src/components/` | Reusable UI: Navbar, ScoreGauge, FactorBars, MetricCard, States, ProtectedRoute, ErrorBoundary, Footer |
 | `frontend/src/services/api.ts` | Axios client for the backend API |
 | `frontend/src/context/AuthContext.tsx` | Auth state + JWT handling |
@@ -295,7 +294,7 @@ The structured analysis is returned in the payload (`posting_schedule`,
 `caption_strategy`, `hashtag_strategy`) and rendered as dedicated cards on the
 results page.
 
-## Authentication & Admin
+## Authentication
 
 - **Registration** requires email + password (min. 8 chars); accounts start unverified.
 - **Email verification is required before predictions** (unverified `/predict`
@@ -303,11 +302,6 @@ results page.
   any email service configured, verification links print to the backend
   console — fully usable with zero email setup.
 - **Login** issues a JWT (7-day expiry) used as a Bearer token on protected routes.
-- **Admin bootstrap:** set `ADMIN_BOOTSTRAP_EMAIL` in `backend/.env` before
-  first registering that address — that account auto-promotes to admin. No
-  manual DB editing required.
-- **Admin module** (`/api/admin/*`): list users, toggle admin, change a user's
-  `plan` (`free`/`pro`), view aggregate stats.
 - Prediction history is scoped per-user — you only ever see your own past
   predictions.
 
@@ -328,9 +322,6 @@ results page.
 | GET | `/model-info` | none | Model metadata, test metrics, feature importance |
 | GET | `/prediction-history` | JWT, verified | Current user's past predictions |
 | GET | `/prediction-history/{id}` | JWT, verified | One past prediction's full detail |
-| GET | `/admin/users` | JWT, admin | List all users |
-| PATCH | `/admin/users/{id}` | JWT, admin | Update admin/plan/verified status |
-| GET | `/admin/stats` | JWT, admin | Aggregate usage stats |
 
 ## Running Locally
 
@@ -342,8 +333,8 @@ startup:
 ```bash
 cd backend
 cp .env.example .env
-# Edit .env: set DATABASE_URL to your Supabase connection string,
-# ADMIN_BOOTSTRAP_EMAIL to your email, and a real SECRET_KEY
+# Edit .env: set DATABASE_URL to your Supabase connection string
+# and a real SECRET_KEY
 ```
 
 No database handy? Leave `DATABASE_URL` unset and the app falls back to a local
@@ -376,8 +367,7 @@ npm install
 npm run dev
 ```
 
-App at `http://localhost:5173`. Register an account with the email you set as
-`ADMIN_BOOTSTRAP_EMAIL` to get admin access.
+App at `http://localhost:5173`. Register an account to get started.
 
 ## Email Verification
 
@@ -425,7 +415,6 @@ See `DEPLOYMENT.md` for the full table. The key ones:
 | `DATABASE_URL` | Yes | `postgresql+psycopg2://...` (Supabase). `postgres://`/`postgresql://` auto-normalized. |
 | `SECRET_KEY` | Yes | `python -c "import secrets; print(secrets.token_hex(32))"` — never reuse the dev default |
 | `ALLOWED_ORIGINS` | Yes | Your deployed frontend's exact URL(s), comma-separated |
-| `ADMIN_BOOTSTRAP_EMAIL` | Recommended | Set before first registering that address |
 | `BREVO_API_KEY` | Recommended | Enables real emails (free 300/day over HTTPS). Without it, links print to server logs — fine for testing |
 | `FRONTEND_URL` | Yes (if emailing) | Base URL used to build verification links — live: `https://post-pulse-eta.vercel.app` |
 | `VITE_API_URL` (frontend build-time) | Yes | Your deployed backend's `/api` URL |
@@ -460,8 +449,8 @@ Honest about boundaries, by design:
   relationships (unlike the rejected Kaggle dataset), but absolute metrics
   describe fit to this generative process, not guaranteed accuracy on real
   Instagram data.
-- **No payment integration yet.** The `plan` field and admin controls are the
-  foundation for monetization, not a working paywall.
+- **No payment integration yet.** The `plan` field is the foundation for
+  monetization, not a working paywall.
 - **JWTs aren't revocable** before their 7-day expiry — no server-side
   blocklist. Fine for a portfolio project, not for a security-sensitive
   production deployment.

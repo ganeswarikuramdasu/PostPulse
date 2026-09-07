@@ -35,9 +35,6 @@ services:
         sync: false
         # REQUIRED - Supabase connection string:
         # postgresql+psycopg2://postgres.zfbjixorlzsbnnsruxpb:_5bQkbNC%3F$9v%2FTC@aws-0-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require
-      - key: ADMIN_BOOTSTRAP_EMAIL
-        value: ""
-        # Your email BEFORE first deploying/registering to get admin access
       - key: ALLOWED_ORIGINS
         sync: false
         # REQUIRED - your Vercel app URL, e.g. https://your-app.vercel.app

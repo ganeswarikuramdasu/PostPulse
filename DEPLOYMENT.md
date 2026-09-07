@@ -59,8 +59,6 @@ Render provisions the backend web service from the included `render.yaml`.
    - **`ALLOWED_ORIGINS`** (REQUIRED) — your deployed frontend URL, e.g.
      `https://postpulse.vercel.app`. (You can set this after the frontend is
      live — see step 4 — then the backend will auto-redeploy.)
-   - **`ADMIN_BOOTSTRAP_EMAIL`** — an email address that becomes the admin
-     account on first registration. Set it **before** you register that address.
    - **`FRONTEND_URL`** — your Vercel URL, e.g. `https://postpulse.vercel.app`
      (used to build email verification links).
    - **`BREVO_API_KEY`** — optional, but recommended for real emails (free
@@ -138,16 +136,7 @@ Gmail, always an App Password, never your real Google password).
 
 ---
 
-## 6. Create your admin account
-
-1. If you set `ADMIN_BOOTSTRAP_EMAIL` in Render **before** deploying, then
-   register an account with that exact email → it is auto-promoted to admin.
-2. Log in and visit `/admin` to see the admin module (user list, plan control,
-   usage stats).
-
----
-
-## 7. Verify it works
+## 6. Verify it works
 
 1. Open your Vercel URL.
 2. Register an account, click the verification link from your email (or the
@@ -177,7 +166,6 @@ Gmail, always an App Password, never your real Google password).
 | `DATABASE_URL` | Yes | Supabase PostgreSQL connection string (with ?sslmode=require). |
 | `SECRET_KEY` | Yes | Random 64-char hex. Never reuse the dev default. |
 | `ALLOWED_ORIGINS` | Yes | Comma-separated frontend origin(s). |
-| `ADMIN_BOOTSTRAP_EMAIL` | Optional | Email promoted to admin on first registration. |
 | `FRONTEND_URL` | Yes (if emailing) | Base URL for verification links. |
 | `BREVO_API_KEY` | Recommended | Brevo API key (free 300 emails/day over HTTPS). Preferred on Render. |
 | `EMAIL_USER` / `EMAIL_FROM_NAME` | With Brevo | Sender address/name verified in Brevo. |

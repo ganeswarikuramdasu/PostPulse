@@ -62,19 +62,4 @@ export async function resendVerification(email: string, password: string) {
   return data
 }
 
-export async function fetchAdminUsers() {
-  const { data } = await client.get('/admin/users')
-  return data
-}
-
-export async function updateAdminUser(userId: number, payload: { is_admin?: boolean; plan?: string; is_verified?: boolean }) {
-  const { data } = await client.patch(`/admin/users/${userId}`, payload)
-  return data
-}
-
-export async function fetchAdminStats() {
-  const { data } = await client.get('/admin/stats')
-  return data
-}
-
 export default client
