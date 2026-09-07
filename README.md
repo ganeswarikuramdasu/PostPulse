@@ -11,7 +11,8 @@ found by re-running the model on candidate inputs. Includes an admin module
 
 This is a portfolio project demonstrating a complete, honest full-stack ML
 pipeline: real data validation, model comparison, evaluation, explainability,
-authentication, and production-style architecture (FastAPI + MySQL + React).
+authentication, and production-style architecture (FastAPI + PostgreSQL/Supabase
++ React).
 
 ---
 
@@ -41,7 +42,7 @@ authentication, and production-style architecture (FastAPI + MySQL + React).
 flowchart TD
     A[React + TypeScript + Tailwind] -->|REST/JSON + JWT| B[FastAPI]
     B --> C[Auth: register/login/verify]
-    C --> D[MySQL: users, tokens, predictions]
+    C --> D[Supabase/PostgreSQL: users, tokens, predictions]
     B --> E[Pydantic validation]
     E --> F[Feature Engineering]
     F --> G[Trained Models<br/>reach / engagement / category]
@@ -61,7 +62,7 @@ Joblib bundle loaded once at API startup — never retrained on request.
 | Backend | FastAPI, Pydantic, Uvicorn, SQLAlchemy |
 | Auth | bcrypt password hashing, JWT (PyJWT), SMTP email verification |
 | ML | Python, NumPy, Pandas, Scikit-learn, Matplotlib, Seaborn, Joblib |
-| Database | **PostgreSQL** (production, Render) or **MySQL** (local dev, via Docker Compose); SQLite auto-fallback for zero-setup local dev |
+| Database | **PostgreSQL** via **Supabase** (production and local dev); SQLite auto-fallback for zero-setup local dev |
 
 ## Dataset & Model
 
@@ -269,25 +270,20 @@ Base URL: `http://localhost:8000/api` · Interactive docs: `http://localhost:800
 
 ## Database Choice
 
-PostPulse supports both major SQL databases through a thin SQLAlchemy layer —
-the models use only portable types, so nothing is engine-specific.
-
-- **Local development**: **MySQL** (via the bundled `docker-compose.yml`, or
-  any local MySQL) is the primary local setup, matching the default
-  `backend/.env.example`. If you don't have a database, leaving `DATABASE_URL`
-  unset falls back to **SQLite** for zero-setup local work.
-- **Production (this repo's recommended deployment)**: **PostgreSQL** on
-  Render's managed free tier, wired up automatically by `render.yaml`. `Render
-  stopped offering new managed MySQL instances, and Postgres is a fully
-  supported alternative with no code changes required.
+PostPulse uses **PostgreSQL via Supabase**, both in production and for local
+development — the same Supabase connection string powers both. Supabase is a
+hosted Postgres, so connecting locally is just setting `DATABASE_URL` to your
+Supabase connection string in `backend/.env`; the app auto-creates its tables
+on startup. If `DATABASE_URL` is left unset, the app falls back to **SQLite**
+for truly zero-setup local work.
 
 Why this works so cleanly:
 
-- `DATABASE_URL` is a standard SQLAlchemy connection string. `mysql://...`,
-  `postgres://...`, and `postgresql://...` URLs are all **normalized
-  automatically** to the corresponding driver form (`mysql+pymysql://...`,
-  `postgresql+psycopg2://...`), so pasting a provider's URL in "just works".
-- `psycopg2-binary` and `pymysql` are both in `backend/requirements.txt`.
+- `DATABASE_URL` is a standard SQLAlchemy connection string. Both
+  `postgres://...` and `postgresql://...` URLs are **normalized automatically**
+  to `postgresql+psycopg2://...`, so pasting your Supabase connection string
+  straight into `DATABASE_URL` "just works".
+- `psycopg2-binary` (the Postgres/Supabase driver) is in `backend/requirements.txt`.
 - SQLite remains the zero-config fallback for anyone cloning the repo and
   running locally without a database (see "Running Locally").
 
@@ -307,13 +303,13 @@ code - each is a real bug that would have surfaced in production:
   every request from a deployed frontend with no useful error message (just
   a browser-level CORS block). Now configurable via `ALLOWED_ORIGINS`.
 - **`DATABASE_URL` normalization.** Managed database providers commonly hand
-  out `mysql://...` connection strings; SQLAlchemy needs the driver named
-  explicitly (`mysql+pymysql://...`). Now normalized automatically.
-- **No MySQL connection pool recycling.** Without `pool_recycle`, long-lived
-  connections in a production pool can go stale when a managed MySQL
-  instance closes idle connections server-side, surfacing as intermittent
-  "MySQL server has gone away" errors under real traffic. Fixed with
-  `pool_recycle=280`.
+  out `postgres://...` connection strings; SQLAlchemy needs the driver named
+  explicitly (`postgresql+psycopg2://...`). Now normalized automatically.
+- **No connection pool recycling.** Without `pool_recycle`, long-lived
+  connections in a production pool can go stale when a managed Postgres
+  instance (or a pooler/load balancer in front of it) closes idle connections
+  server-side, surfacing as intermittent connection errors under real traffic.
+  Fixed with `pool_recycle=280`.
 - **Duplicate registration race condition.** Two concurrent requests for the
   same email could both pass the "does this email exist" check before either
   committed, hitting an unhandled `IntegrityError` → raw 500. Now caught and
@@ -348,16 +344,21 @@ plainly rather than shipped half-working.
 
 ## Running Locally
 
-### 1. Start MySQL (recommended)
+### 1. Point the backend at your database
+
+Use your **Supabase** connection string for local development — the app
+auto-creates its tables on startup:
 
 ```bash
-docker compose up -d
+cd backend
+cp .env.example .env
+# Edit .env: set DATABASE_URL to your Supabase connection string,
+# ADMIN_BOOTSTRAP_EMAIL to your email, and a real SECRET_KEY
 ```
-This creates a `postpulse` database and user matching the default
-`backend/.env.example` connection string. No MySQL installation needed.
 
-Don't have Docker? Leave `DATABASE_URL` unset in `.env` and the app falls
-back to a local SQLite file automatically — everything else works the same.
+Don't have a database handy? Leave `DATABASE_URL` unset in `.env` and the app
+falls back to a local SQLite file automatically — everything else works the
+same.
 
 ### 2. Train the model
 
@@ -372,8 +373,6 @@ python ml/src/train.py
 ```bash
 cd backend
 pip install -r requirements.txt
-cp .env.example .env
-# Edit .env: set ADMIN_BOOTSTRAP_EMAIL to your email, set a real SECRET_KEY
 python -m uvicorn app.main:app --reload --port 8000
 ```
 API docs at `http://localhost:8000/docs`. On Windows, if `uvicorn` isn't on
@@ -421,14 +420,16 @@ for SPA routing, and the full environment-variable checklist.
 
 ```bash
 cp backend/.env.example backend/.env
-# edit backend/.env: set a real SECRET_KEY and ADMIN_BOOTSTRAP_EMAIL
+# edit backend/.env: set DATABASE_URL (your Supabase connection string),
+# a real SECRET_KEY and ADMIN_BOOTSTRAP_EMAIL
 python ml/src/generate_dataset.py && python ml/src/train.py   # produces backend/models/*.joblib
 
 docker compose -f docker-compose.full.yml up -d --build
 ```
-Frontend on `:8080`, backend on `:8000`, MySQL internal. Adjust
-`docker-compose.full.yml`'s `VITE_API_URL` and `ALLOWED_ORIGINS` build
-args/env if deploying to a real domain rather than testing locally.
+Frontend on `:8080`, backend on `:8000`, database is your Supabase instance
+(set via `DATABASE_URL`). Adjust `docker-compose.full.yml`'s `VITE_API_URL`
+and `ALLOWED_ORIGINS` build args/env if deploying to a real domain rather
+than testing locally.
 
 > **Note on the managed-service Option B** (Railway/PlanetScale/Render +
 > separate services) that used to live here: that approach is still valid, but
@@ -436,9 +437,8 @@ args/env if deploying to a real domain rather than testing locally.
 > `DEPLOYMENT.md`. The backend is self-contained (**`app/ml/`** bundles the
 > inference code, and the model bundle lives in `backend/models/`), so it can
 > be deployed as a standalone service without the `ml/` source tree. It runs on
-> **PostgreSQL** (via `psycopg2`) or **MySQL** (via `pymysql`) depending on the
-> `DATABASE_URL` you provide; `postgres://...` and `mysql://...` URLs are
-> normalized automatically.
+> **PostgreSQL** (via `psycopg2`) depending on the `DATABASE_URL` you provide;
+> `postgres://...` and `postgresql://...` URLs are normalized automatically.
 
 ### Production environment variable checklist
 
@@ -446,7 +446,7 @@ See `DEPLOYMENT.md` for the full, current table. Key backend variables:
 
 | Variable | Required | Notes |
 |---|---|---|
-| `DATABASE_URL` | Yes | `postgresql+psycopg2://...` (Render Postgres) or `mysql+pymysql://...`. `postgres://`/`mysql://` auto-normalized. |
+| `DATABASE_URL` | Yes | `postgresql+psycopg2://...` (Supabase/Postgres). `postgres://`/`postgresql://` auto-normalized. |
 | `SECRET_KEY` | Yes | `python -c "import secrets; print(secrets.token_hex(32))"` - never reuse the dev default |
 | `ALLOWED_ORIGINS` | Yes | Your deployed frontend's exact URL(s), comma-separated |
 | `ADMIN_BOOTSTRAP_EMAIL` | Recommended | Set before first registering that address |

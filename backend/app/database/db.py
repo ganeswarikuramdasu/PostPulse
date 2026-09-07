@@ -1,17 +1,16 @@
 """
 db.py
 
-Uses SQLAlchemy so the same code works against Supabase / PostgreSQL (production),
-MySQL (local dev), and SQLite (automatic local fallback when DATABASE_URL
-isn't set, so the project still runs with zero database setup).
+Uses SQLAlchemy so the same code works against Supabase / PostgreSQL (used for
+both production and local development) and SQLite (automatic local fallback
+when DATABASE_URL isn't set, so the project still runs with zero database setup).
 
 Supported DATABASE_URL forms (auto-normalized where a driver isn't named):
   - Supabase / PostgreSQL: postgresql+psycopg2://... or postgres://... or postgresql://...
-  - MySQL (local dev):     mysql://...   -> mysql+pymysql://...
   - SQLite (zero setup):   sqlite:///./postpulse.db
 
-Requires the matching driver in backend/requirements.txt: `psycopg2-binary`
-(Postgres/Supabase) and/or `pymysql` (MySQL). See README "Database Choice".
+Requires `psycopg2-binary` in backend/requirements.txt for Postgres/Supabase.
+See README "Database Choice".
 """
 import os
 from sqlalchemy import (
@@ -25,12 +24,9 @@ DATABASE_URL = os.getenv("DATABASE_URL", "").strip() or "sqlite:///./postpulse.d
 # Cloud database providers hand out connection strings in a few common
 # shapes; SQLAlchemy needs the driver named explicitly. Normalize automatically
 # so pasting a provider's URL straight into DATABASE_URL just works:
-#   mysql://...        -> mysql+pymysql://...
 #   postgres://...     -> postgresql+psycopg2://...
 #   postgresql://...   -> postgresql+psycopg2://...
-if DATABASE_URL.startswith("mysql://"):
-    DATABASE_URL = DATABASE_URL.replace("mysql://", "mysql+pymysql://", 1)
-elif DATABASE_URL.startswith("postgres://"):
+if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+psycopg2://", 1)
 elif DATABASE_URL.startswith("postgresql://"):
     DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://", 1)
@@ -39,11 +35,11 @@ connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite")
 
 engine_kwargs = {"connect_args": connect_args, "pool_pre_ping": True}
 if not DATABASE_URL.startswith("sqlite"):
-    # pool_recycle avoids "MySQL server has gone away" errors in production,
-    # where a managed MySQL instance (or a load balancer in front of it) can
-    # silently close idle connections after a timeout shorter than the
+    # pool_recycle avoids stale connection errors in production, where a
+    # managed Postgres instance (or a pooler/load balancer in front of it)
+    # can silently close idle connections after a timeout shorter than the
     # pool's default idle lifetime. 280s stays safely under the common
-    # 300s/8h default wait_timeout most managed MySQL providers set.
+    # 300s/8h defaults most managed Postgres providers set.
     engine_kwargs["pool_recycle"] = 280
     engine_kwargs["pool_size"] = int(os.getenv("DB_POOL_SIZE", "5"))
     engine_kwargs["max_overflow"] = int(os.getenv("DB_MAX_OVERFLOW", "10"))
