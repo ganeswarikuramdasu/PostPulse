@@ -44,13 +44,17 @@ services:
       - key: FRONTEND_URL
         sync: false
         # Your Vercel app URL with /, e.g. https://your-app.vercel.app
+      - key: AUTO_VERIFY_USERS
+        value: "true"
+        # "true" activates accounts immediately (recommended on Render free tier since Render blocks outbound SMTP ports)
+      - key: RESEND_API_KEY
+        sync: false
+        # Optional: Resend HTTP API key (https://resend.com) - works on Render over HTTPS port 443
       - key: EMAIL_HOST
         value: smtp.gmail.com
       - key: EMAIL_PORT
         value: "587"
       - key: EMAIL_USER
         value: ""
-        # Your Gmail address (optional, for real verification emails)
       - key: EMAIL_APP_PASSWORD
         value: ""
-        # Gmail App Password (optional, for real verification emails)

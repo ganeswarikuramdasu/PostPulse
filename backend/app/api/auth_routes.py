@@ -20,6 +20,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 # backend/.env. If unset, no auto-promotion happens (first admin must be
 # created manually - see README "Admin Access").
 ADMIN_BOOTSTRAP_EMAIL = os.getenv("ADMIN_BOOTSTRAP_EMAIL", "").lower().strip()
+AUTO_VERIFY_USERS = os.getenv("AUTO_VERIFY_USERS", "false").lower().strip() in ("1", "true", "yes")
 
 
 @router.post("/register", response_model=MessageResponse)
@@ -33,7 +34,7 @@ def register(payload: UserRegister, background_tasks: BackgroundTasks, db: Sessi
     user = User(
         email=payload.email.lower(),
         hashed_password=hash_password(payload.password),
-        is_verified=False,
+        is_verified=AUTO_VERIFY_USERS,
         is_admin=is_admin,
     )
     db.add(user)
@@ -47,6 +48,10 @@ def register(payload: UserRegister, background_tasks: BackgroundTasks, db: Sessi
         db.rollback()
         raise HTTPException(status_code=400, detail="An account with this email already exists.")
     db.refresh(user)
+
+    if AUTO_VERIFY_USERS:
+        return {"message": "Account created successfully. You can log in now."}
+
 
     token = generate_verification_token()
     verification = EmailVerificationToken(
