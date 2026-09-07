@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Radar, ShieldCheck, LogOut } from 'lucide-react'
+import { Activity, ShieldCheck, LogOut } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 export default function Navbar() {
@@ -26,7 +26,7 @@ export default function Navbar() {
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
         <Link to="/" className="flex items-center gap-2 focus-ring rounded-md">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-vibrant-cta text-white shadow-glow-pink">
-            <Radar size={18} strokeWidth={2.5} />
+            <Activity size={18} strokeWidth={2.5} />
           </div>
           <span className="font-display text-lg font-semibold tracking-tight">
             <span className="text-vibrant">PostPulse</span>

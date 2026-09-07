@@ -5,19 +5,29 @@ import { predictContent } from '../services/api'
 import { extractApiError } from '../utils/validation'
 import { AlertCircle } from 'lucide-react'
 
-const initialForm: ContentInput = {
-  content_type: 'reel',
-  creator_category: 'Technology',
-  account_type: 'creator',
+type PredictForm = Omit<ContentInput, 'description_length' | 'hashtags' | 'followers' | 'account_age_months' | 'historical_avg_views' | 'historical_engagement_rate' | 'posting_hour'> & {
+  description_length: string | number
+  hashtags: string | number
+  followers: string | number
+  account_age_months: string | number
+  historical_avg_views: string | number
+  historical_engagement_rate: string | number
+  posting_hour: string | number
+}
+
+const initialForm: PredictForm = {
+  content_type: '',
+  creator_category: '',
+  account_type: '',
   has_call_to_action: 1,
-  description_length: 120,
-  hashtags: 8,
-  followers: 25000,
-  account_age_months: 6,
-  historical_avg_views: 5000,
-  historical_engagement_rate: 4.2,
-  posting_hour: 19,
-  day_of_week: 'Saturday',
+  description_length: '',
+  hashtags: '',
+  followers: '',
+  account_age_months: '',
+  historical_avg_views: '',
+  historical_engagement_rate: '',
+  posting_hour: '',
+  day_of_week: '',
 }
 
 type Errors = Partial<Record<keyof ContentInput, string>>
@@ -38,27 +48,35 @@ const inputClass =
   'w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary focus-ring focus:border-accent/50 placeholder:text-text-muted'
 
 export default function Predict() {
-  const [form, setForm] = useState<ContentInput>(initialForm)
+  const [form, setForm] = useState<PredictForm>(initialForm)
   const [errors, setErrors] = useState<Errors>({})
   const [submitting, setSubmitting] = useState(false)
   const [apiError, setApiError] = useState<string | null>(null)
   const navigate = useNavigate()
 
-  const update = <K extends keyof ContentInput>(key: K, value: ContentInput[K]) => {
+  const update = <K extends keyof PredictForm>(key: K, value: PredictForm[K]) => {
     setForm((f) => ({ ...f, [key]: value }))
     setErrors((e) => ({ ...e, [key]: undefined }))
   }
 
   const validate = (): boolean => {
     const e: Errors = {}
-    if (form.description_length < 0 || form.description_length > 5000) e.description_length = 'Must be between 0 and 5000'
-    if (form.hashtags < 0 || form.hashtags > 50) e.hashtags = 'Must be between 0 and 50'
-    if (form.followers < 0) e.followers = 'Cannot be negative'
-    if (form.followers > 500_000_000) e.followers = 'Must be 500M or less'
-    if (form.account_age_months < 0 || form.account_age_months > 300) e.account_age_months = 'Must be between 0 and 300 months'
-    if (form.historical_avg_views < 0) e.historical_avg_views = 'Cannot be negative'
-    if (form.historical_engagement_rate < 0 || form.historical_engagement_rate > 100) e.historical_engagement_rate = 'Must be a percentage 0–100'
-    if (form.posting_hour < 0 || form.posting_hour > 23) e.posting_hour = 'Must be 0–23'
+    const descLen = Number(form.description_length)
+    const tags = Number(form.hashtags)
+    const followers = Number(form.followers)
+    const age = Number(form.account_age_months)
+    const histViews = Number(form.historical_avg_views)
+    const histEng = Number(form.historical_engagement_rate)
+    const hour = Number(form.posting_hour)
+
+    if (form.description_length === '' || Number.isNaN(descLen) || descLen < 0 || descLen > 5000) e.description_length = 'Enter caption length (0–5000)'
+    if (form.hashtags === '' || Number.isNaN(tags) || tags < 0 || tags > 50) e.hashtags = 'Enter hashtag count (0–50)'
+    if (form.followers === '' || Number.isNaN(followers) || followers < 0) e.followers = 'Enter follower count'
+    if (followers > 500_000_000) e.followers = 'Must be 500M or less'
+    if (form.account_age_months === '' || Number.isNaN(age) || age < 0 || age > 300) e.account_age_months = 'Enter account age (0–300 months)'
+    if (form.historical_avg_views === '' || Number.isNaN(histViews) || histViews < 0) e.historical_avg_views = 'Enter historical average reach'
+    if (form.historical_engagement_rate === '' || Number.isNaN(histEng) || histEng < 0 || histEng > 100) e.historical_engagement_rate = 'Enter a percentage 0–100'
+    if (form.posting_hour === '' || Number.isNaN(hour) || hour < 0 || hour > 23) e.posting_hour = 'Enter hour 0–23'
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -68,9 +86,23 @@ export default function Predict() {
     setApiError(null)
     if (!validate()) return
     setSubmitting(true)
+    const payload: ContentInput = {
+      content_type: form.content_type,
+      creator_category: form.creator_category,
+      account_type: form.account_type,
+      has_call_to_action: form.has_call_to_action,
+      description_length: Number(form.description_length),
+      hashtags: Number(form.hashtags),
+      followers: Number(form.followers),
+      account_age_months: Number(form.account_age_months),
+      historical_avg_views: Number(form.historical_avg_views),
+      historical_engagement_rate: Number(form.historical_engagement_rate),
+      posting_hour: Number(form.posting_hour),
+      day_of_week: form.day_of_week,
+    }
     try {
-      const result = await predictContent(form)
-      navigate('/results', { state: { result, input: form } })
+      const result = await predictContent(payload)
+      navigate('/results', { state: { result, input: payload } })
     } catch (err: any) {
       setApiError(
         extractApiError(err) || 'Could not reach the prediction API. Make sure the backend is running and VITE_API_URL is set correctly.'
