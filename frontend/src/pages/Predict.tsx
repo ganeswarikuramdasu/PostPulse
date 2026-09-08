@@ -32,14 +32,31 @@ const initialForm: PredictForm = {
 
 type Errors = Partial<Record<keyof ContentInput, string>>
 
+const FIELD_LABELS: Record<keyof ContentInput, string> = {
+  content_type: 'Content format',
+  creator_category: 'Creator / niche category',
+  account_type: 'Account type',
+  has_call_to_action: 'Call-to-action',
+  description_length: 'Caption length',
+  hashtags: 'Hashtags',
+  followers: 'Followers',
+  account_age_months: 'Account age',
+  historical_avg_views: 'Historical average reach',
+  historical_engagement_rate: 'Historical engagement rate',
+  posting_hour: 'Posting hour',
+  day_of_week: 'Day of week',
+}
+
 function Field({
-  label, hint, children,
-}: { label: string; hint?: string; children: React.ReactNode }) {
+  label, hint, error, children,
+}: { label: string; hint?: string; error?: string; children: React.ReactNode }) {
   return (
     <label className="block">
       <span className="mb-1.5 block text-sm font-medium text-text-primary">{label}</span>
       {children}
-      {hint && <span className="mt-1 block text-xs text-text-muted">{hint}</span>}
+      {error
+        ? <span className="mt-1 flex items-center gap-1 text-xs font-medium text-score-low">{error}</span>
+        : hint && <span className="mt-1 block text-xs text-text-muted">{hint}</span>}
     </label>
   )
 }
@@ -47,9 +64,12 @@ function Field({
 const inputClass =
   'w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary focus-ring focus:border-accent/50 placeholder:text-text-muted'
 
+const errorClass = 'border-score-low/60 focus:border-score-low'
+
 export default function Predict() {
   const [form, setForm] = useState<PredictForm>(initialForm)
   const [errors, setErrors] = useState<Errors>({})
+  const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [apiError, setApiError] = useState<string | null>(null)
   const navigate = useNavigate()
@@ -57,9 +77,12 @@ export default function Predict() {
   const update = <K extends keyof PredictForm>(key: K, value: PredictForm[K]) => {
     setForm((f) => ({ ...f, [key]: value }))
     setErrors((e) => ({ ...e, [key]: undefined }))
+    setFormError(null)
   }
 
-  const validate = (): boolean => {
+  const fieldClass = (error?: string) => (error ? `${inputClass} ${errorClass}` : inputClass)
+
+  const validate = (): Errors => {
     const e: Errors = {}
     const descLen = Number(form.description_length)
     const tags = Number(form.hashtags)
@@ -82,13 +105,28 @@ export default function Predict() {
     if (form.historical_engagement_rate === '' || Number.isNaN(histEng) || histEng < 0 || histEng > 100) e.historical_engagement_rate = 'Enter a percentage 0–100'
     if (form.posting_hour === '' || Number.isNaN(hour) || hour < 0 || hour > 23) e.posting_hour = 'Enter hour 0–23'
     setErrors(e)
-    return Object.keys(e).length === 0
+    return e
+  }
+
+  const missingSummary = (e: Errors): string => {
+    const missing = Object.keys(e)
+      .map((k) => FIELD_LABELS[k as keyof ContentInput])
+    const list = missing.length > 3
+      ? `${missing.slice(0, 3).join(', ')} and ${missing.length - 3} more`
+      : missing.join(', ')
+    return missing.length === 1
+      ? `The following field is missing: ${list}`
+      : `The following fields are missing: ${list}`
   }
 
   const handleSubmit = async (ev: FormEvent) => {
     ev.preventDefault()
     setApiError(null)
-    if (!validate()) return
+    const result = validate()
+    if (Object.keys(result).length) {
+      setFormError(`${missingSummary(result)}. Please fix them before predicting.`)
+      return
+    }
     setSubmitting(true)
     const payload: ContentInput = {
       content_type: form.content_type,
@@ -136,24 +174,24 @@ export default function Predict() {
             Content
           </legend>
           <div className="grid gap-5 sm:grid-cols-2">
-            <Field label="Content format" hint={errors.content_type}>
-              <select className={inputClass} value={form.content_type} onChange={(e) => update('content_type', e.target.value)}>
+            <Field label="Content format" error={errors.content_type}>
+              <select className={fieldClass(errors.content_type)} value={form.content_type} onChange={(e) => update('content_type', e.target.value)}>
                 <option value="" disabled>Select content format</option>
                 {CONTENT_TYPES.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </Field>
-            <Field label="Creator / niche category" hint={errors.creator_category}>
-              <select className={inputClass} value={form.creator_category} onChange={(e) => update('creator_category', e.target.value)}>
+            <Field label="Creator / niche category" error={errors.creator_category}>
+              <select className={fieldClass(errors.creator_category)} value={form.creator_category} onChange={(e) => update('creator_category', e.target.value)}>
                 <option value="" disabled>Select creator / niche</option>
                 {CREATOR_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </Field>
-            <Field label="Caption length (characters)" hint={errors.description_length}>
-              <input type="number" className={inputClass} value={form.description_length}
+            <Field label="Caption length (characters)" error={errors.description_length}>
+              <input type="number" className={fieldClass(errors.description_length)} value={form.description_length}
                 onChange={(e) => update('description_length', Number(e.target.value))} />
             </Field>
-            <Field label="Hashtags" hint={errors.hashtags}>
-              <input type="number" className={inputClass} value={form.hashtags}
+            <Field label="Hashtags" error={errors.hashtags}>
+              <input type="number" className={fieldClass(errors.hashtags)} value={form.hashtags}
                 onChange={(e) => update('hashtags', Number(e.target.value))} />
             </Field>
             <Field label="Includes a call-to-action?">
@@ -171,26 +209,26 @@ export default function Predict() {
             Account
           </legend>
           <div className="grid gap-5 sm:grid-cols-2">
-            <Field label="Account type" hint={errors.account_type}>
-              <select className={inputClass} value={form.account_type} onChange={(e) => update('account_type', e.target.value)}>
+            <Field label="Account type" error={errors.account_type}>
+              <select className={fieldClass(errors.account_type)} value={form.account_type} onChange={(e) => update('account_type', e.target.value)}>
                 <option value="" disabled>Select account type</option>
                 {ACCOUNT_TYPES.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </Field>
-            <Field label="Followers" hint={errors.followers}>
-              <input type="number" className={inputClass} value={form.followers}
+            <Field label="Followers" error={errors.followers}>
+              <input type="number" className={fieldClass(errors.followers)} value={form.followers}
                 onChange={(e) => update('followers', Number(e.target.value))} />
             </Field>
-            <Field label="Account age (months)" hint={errors.account_age_months}>
-              <input type="number" step="0.1" className={inputClass} value={form.account_age_months}
+            <Field label="Account age (months)" error={errors.account_age_months}>
+              <input type="number" step="0.1" className={fieldClass(errors.account_age_months)} value={form.account_age_months}
                 onChange={(e) => update('account_age_months', Number(e.target.value))} />
             </Field>
-            <Field label="Historical average reach" hint={errors.historical_avg_views}>
-              <input type="number" className={inputClass} value={form.historical_avg_views}
+            <Field label="Historical average reach" error={errors.historical_avg_views}>
+              <input type="number" className={fieldClass(errors.historical_avg_views)} value={form.historical_avg_views}
                 onChange={(e) => update('historical_avg_views', Number(e.target.value))} />
             </Field>
-            <Field label="Historical engagement rate (%)" hint={errors.historical_engagement_rate}>
-              <input type="number" step="0.1" className={inputClass} value={form.historical_engagement_rate}
+            <Field label="Historical engagement rate (%)" error={errors.historical_engagement_rate}>
+              <input type="number" step="0.1" className={fieldClass(errors.historical_engagement_rate)} value={form.historical_engagement_rate}
                 onChange={(e) => update('historical_engagement_rate', Number(e.target.value))} />
             </Field>
           </div>
@@ -201,12 +239,12 @@ export default function Predict() {
             Publishing
           </legend>
           <div className="grid gap-5 sm:grid-cols-2">
-            <Field label="Posting hour (0–23)" hint={errors.posting_hour}>
-              <input type="number" min={0} max={23} className={inputClass} value={form.posting_hour}
+            <Field label="Posting hour (0–23)" error={errors.posting_hour}>
+              <input type="number" min={0} max={23} className={fieldClass(errors.posting_hour)} value={form.posting_hour}
                 onChange={(e) => update('posting_hour', Number(e.target.value))} />
             </Field>
-            <Field label="Day of week" hint={errors.day_of_week}>
-              <select className={inputClass} value={form.day_of_week} onChange={(e) => update('day_of_week', e.target.value)}>
+            <Field label="Day of week" error={errors.day_of_week}>
+              <select className={fieldClass(errors.day_of_week)} value={form.day_of_week} onChange={(e) => update('day_of_week', e.target.value)}>
                 <option value="" disabled>Select day of week</option>
                 {DAYS.map((d) => <option key={d} value={d}>{d}</option>)}
               </select>
@@ -214,8 +252,15 @@ export default function Predict() {
           </div>
         </fieldset>
 
-        <button
-          type="submit"
+{formError && (
+        <div className="flex items-start gap-3 rounded-lg border border-score-low/30 bg-score-low/5 p-4 text-sm text-score-low">
+          <AlertCircle size={18} className="mt-0.5 shrink-0" />
+          <span>{formError}</span>
+        </div>
+      )}
+
+      <button
+        type="submit"
           disabled={submitting}
           className="focus-ring w-full rounded-lg bg-vibrant-cta py-3.5 font-display font-semibold text-white shadow-glow-pink transition-transform hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60"
         >
